@@ -1,12 +1,3 @@
-///////////////////////////////////////////////////////////////////////
-//
-// Recurrent neural network based statistical language modeling toolkit
-// Version 0.3e
-// (c) 2010-2012 Tomas Mikolov (tmikolov@gmail.com)
-//
-///////////////////////////////////////////////////////////////////////
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,7 +9,6 @@
 
 
 using namespace std;
-using namespace rnn;
 
 int argPos(char *str, int argc, char **argv)
 {
@@ -29,156 +19,8 @@ int argPos(char *str, int argc, char **argv)
     return -1;
 }
 
-void matrixXvector2( double *dest, double *srcvec, double *srcmatrix, int matrix_width, int from, int to, int from2, int to2, int type)
-{
-    int a, b;
-    double val1, val2, val3, val4;
-    double val5, val6, val7, val8;
-
-    if (type==0) {		//ac mod
-    for (b=0; b<(to-from)/8; b++) {
-        val1=0;
-        val2=0;
-        val3=0;
-        val4=0;
-
-        val5=0;
-        val6=0;
-        val7=0;
-        val8=0;
-
-        for (a=from2; a<to2; a++) {
-            val1 += srcvec[a] * srcmatrix[a+(b*8+from+0)*matrix_width];
-            val2 += srcvec[a] * srcmatrix[a+(b*8+from+1)*matrix_width];
-            val3 += srcvec[a] * srcmatrix[a+(b*8+from+2)*matrix_width];
-            val4 += srcvec[a] * srcmatrix[a+(b*8+from+3)*matrix_width];
-
-            val5 += srcvec[a] * srcmatrix[a+(b*8+from+4)*matrix_width];
-            val6 += srcvec[a] * srcmatrix[a+(b*8+from+5)*matrix_width];
-            val7 += srcvec[a] * srcmatrix[a+(b*8+from+6)*matrix_width];
-            val8 += srcvec[a] * srcmatrix[a+(b*8+from+7)*matrix_width];
-            }
-            dest[b*8+from+0] += val1;
-            dest[b*8+from+1] += val2;
-            dest[b*8+from+2] += val3;
-            dest[b*8+from+3] += val4;
-
-            dest[b*8+from+4] += val5;
-            dest[b*8+from+5] += val6;
-            dest[b*8+from+6] += val7;
-            dest[b*8+from+7] += val8;
-    }
-
-    for (b=b*8; b<to-from; b++) {
-        for (a=from2; a<to2; a++) {
-            dest[b+from] += srcvec[a] * srcmatrix[a+(b+from)*matrix_width];
-            }
-        }
-    }
-    else {		//er mod
-        for (a=0; a<(to2-from2)/8; a++) {
-        val1=0;
-        val2=0;
-        val3=0;
-        val4=0;
-
-        val5=0;
-        val6=0;
-        val7=0;
-        val8=0;
-
-        for (b=from; b<to; b++) {
-                val1 += srcvec[b] * srcmatrix[a*8+from2+0+b*matrix_width];
-                val2 += srcvec[b] * srcmatrix[a*8+from2+1+b*matrix_width];
-                val3 += srcvec[b] * srcmatrix[a*8+from2+2+b*matrix_width];
-                val4 += srcvec[b] * srcmatrix[a*8+from2+3+b*matrix_width];
-
-                val5 += srcvec[b] * srcmatrix[a*8+from2+4+b*matrix_width];
-                val6 += srcvec[b] * srcmatrix[a*8+from2+5+b*matrix_width];
-                val7 += srcvec[b] * srcmatrix[a*8+from2+6+b*matrix_width];
-                val8 += srcvec[b] * srcmatrix[a*8+from2+7+b*matrix_width];
-            }
-            dest[a*8+from2+0] += val1;
-            dest[a*8+from2+1] += val2;
-            dest[a*8+from2+2] += val3;
-            dest[a*8+from2+3] += val4;
-
-            dest[a*8+from2+4] += val5;
-            dest[a*8+from2+5] += val6;
-            dest[a*8+from2+6] += val7;
-            dest[a*8+from2+7] += val8;
-    }
-
-    for (a=a*8; a<to2-from2; a++) {
-        for (b=from; b<to; b++) {
-            dest[a+from2] += srcvec[b] * srcmatrix[a+from2+b*matrix_width];
-            }
-        }
-    }
-
-    //this is normal implementation (about 3x slower):
-
-    /*if (type==0) {		//ac mod
-    for (b=from; b<to; b++) {
-        for (a=from2; a<to2; a++) {
-            dest[b].ac += srcvec[a].ac * srcmatrix[a+b*matrix_width].weight;
-            }
-    }
-    }
-    else 		//er mod
-    if (type==1) {
-    for (a=from2; a<to2; a++) {
-        for (b=from; b<to; b++) {
-            dest[a].er += srcvec[b].er * srcmatrix[a+b*matrix_width].weight;
-            }
-        }
-    }*/
-}
-
-void EigenTest()
-{
-    struct timeval start, end;
-
-
-    srand(time(0));
-    DenseMat a;
-    DenseVec b;
-    a.setRandom(9000, 1500);
-    b.setRandom(1500);
-
-
-    double * a1, * b1, *c1;
-    a1=(double *)calloc(9000*1500, sizeof(double));
-    b1 = (double *)calloc(1500*1, sizeof(double));
-    c1 = (double *)calloc(9000*1, sizeof(double));
-
-    Eigen::Map<Eigen::MatrixXd, 1, Eigen::Stride<1, 1500>> a_map(a1, 9000, 1500, Eigen::Stride<1, 1500>(1, 1500));
-   Eigen::Map<Eigen::RowVectorXd> b_map(b1, 1500);
-   // Eigen::Map<Eigen::MatrixXd, 1, Eigen::Stride<1, Eigen::Dynamic>> b_map(b1, 1500, 1, Eigen::Stride<1, Eigen::Dynamic>(1, 1));
-   // Eigen::Map<Eigen::MatrixXd, 1, Eigen::Stride<1, Eigen::Dynamic>> c_map(c1, 9000, 1, Eigen::Stride<1, Eigen::Dynamic>(1, 1));
-    Eigen::Map<Eigen::VectorXd> c_map(c1, 9000);
-
-    a_map = a;
-    b_map = b;
-
-    gettimeofday(&start, NULL);
-
-    //c_map = a_map * b_map;
-    DenseMat c = a * b;
- //   matrixXvector2(c1,b1,a1,1500,0,9000,0,1500,0);
-    gettimeofday(&end, NULL);
-
-    double delta = ((end.tv_sec  - start.tv_sec) * 1000000u +
-                 end.tv_usec - start.tv_usec) / 1.e6;
-        std::cout<<delta<<endl;
-        std::cout << "Finished in " << delta << std::endl;
-}
-
 int main(int argc, char **argv)
 {
-    Eigen::setNbThreads(3);
-   // EigenTest();
-
     int i;
     
     int debug_mode=1;

@@ -11,60 +11,25 @@
 
 #define MAX_STRING 100
 
+#include <assert.h>
+#include "cuda-frontend.h"
+
+#ifndef min
+#define min(a,b) ((a < b) ? a : b)
+#endif
+#ifndef max
+#define max(a,b) ((a > b) ? a : b)
+#endif
+
 #include <string.h>
-#include "rnn-data-types.h"
-
-typedef double real;		// doubles for NN weights
-typedef double direct_t;	// doubles for ME weights; TODO: check why floats are not enough for RNNME (convergence problems)
-
-typedef real neuron;
-//struct neuron {
-//    real ac;		//actual value stored in neuron
-//    real er;		//error value in neuron, used by learning algorithm
-//};
-
-typedef real synapse;
-
-//struct synapse {
-//    real weight;	//weight of synapse
-//};
-
-struct Layer
-{
-    rnn::DenseVec ac;
-    rnn::DenseVec er;
-
-    void init(size_t i_size)
-    {
-        ac.setZero(i_size);
-        er.setZero(i_size);
-    }
-
-    void copy(const Layer& rhs)
-    {
-
-    }
-
-    void copyActivation(const Layer& rhs)
-    {
-
-    }
-};
-
-typedef rnn::DenseMat SynapseMat;
 
 struct vocab_word {
     int cn;
     char word[MAX_STRING];
 
-    real prob;
+    double prob;
     int class_index;
 };
-
-const unsigned int PRIMES[]={108641969, 116049371, 125925907, 133333309, 145678979, 175308587, 197530793, 234567803, 251851741, 264197411, 330864029, 399999781,
-407407183, 459258997, 479012069, 545678687, 560493491, 607407037, 629629243, 656789717, 716048933, 718518067, 725925469, 733332871, 753085943, 755555077,
-782715551, 790122953, 812345159, 814814293, 893826581, 923456189, 940740127, 953085797, 985184539, 990122807};
-const unsigned int PRIMES_SIZE=sizeof(PRIMES)/sizeof(PRIMES[0]);
 
 const int MAX_NGRAM_ORDER=20;
 
@@ -86,13 +51,13 @@ protected:
     int filetype;
     
     int use_lmprob;
-    real lambda;
-    real gradient_cutoff;
+    double lambda;
+    double gradient_cutoff;
     
-    real dynamic;
+    double dynamic;
     
-    real alpha;
-    real starting_alpha;
+    double alpha;
+    double starting_alpha;
     int alpha_divide;
     double logp, llogp;
     float min_improvement;
@@ -105,7 +70,7 @@ protected:
     int one_iter;
     int anti_k;
     
-    real beta;
+    double beta;
     
     int class_size;
     int **class_words;
@@ -129,8 +94,8 @@ protected:
     int bptt_block;
     std::vector<int> bptt_history;
     std::vector<Layer> bptt_hidden;
-    SynapseMat bptt_syn0h;
-    SynapseMat bptt_syn0v;
+    Matrix bptt_syn0h;
+    Matrix bptt_syn0v;
     
     int gen;
 
@@ -140,18 +105,18 @@ protected:
     Layer neu1;
     Layer neu2;
 
-    SynapseMat syn0v;		//weights between input and hidden layer
-    SynapseMat syn0h;
-    SynapseMat syn1;		//weights between hidden and output layer (or hidden and compression if compression>0)
+    Matrix syn0v;		//weights between input and hidden layer
+    Matrix syn0h;
+    Matrix syn1;		//weights between hidden and output layer (or hidden and compression if compression>0)
     
     //backup used in training:
     Layer neu0b;
     Layer neu1b;
     Layer neu2b;
 
-    SynapseMat syn0vb;
-    SynapseMat syn0hb;
-    SynapseMat syn1b;
+    Matrix syn0vb;
+    Matrix syn0hb;
+    Matrix syn1b;
     
     //backup used in n-bset rescoring:
     Layer neu1b2;
@@ -222,7 +187,7 @@ public:
     ~CRnnLM()		//destructor, deallocates memory
     {
         int i;
-        if (vocab=NULL)
+        if (vocab==NULL)
         {
             for (i=0; i<class_size; i++) free(class_words[i]);
             free(class_max_cn);
@@ -235,7 +200,7 @@ public:
         }
     }
     
-    real random(real min, real max);
+    double random(double min, double max);
 
     void setTrainFile(char *str);
     void setValidFile(char *str);
@@ -247,15 +212,15 @@ public:
     
     void setClassSize(int newSize) {class_size=newSize;}
     void setOldClasses(int newVal) {old_classes=newVal;}
-    void setLambda(real newLambda) {lambda=newLambda;}
-    void setGradientCutoff(real newGradient) {gradient_cutoff=newGradient;}
-    void setDynamic(real newD) {dynamic=newD;}
-    void setGen(real newGen) {gen=newGen;}
+    void setLambda(double newLambda) {lambda=newLambda;}
+    void setGradientCutoff(double newGradient) {gradient_cutoff=newGradient;}
+    void setDynamic(double newD) {dynamic=newD;}
+    void setGen(double newGen) {gen=newGen;}
     void setIndependent(int newVal) {independent=newVal;}
     
-    void setLearningRate(real newAlpha) {alpha=newAlpha;}
-    void setRegularization(real newBeta) {beta=newBeta;}
-    void setMinImprovement(real newMinImprovement) {min_improvement=newMinImprovement;}
+    void setLearningRate(double newAlpha) {alpha=newAlpha;}
+    void setRegularization(double newBeta) {beta=newBeta;}
+    void setMinImprovement(double newMinImprovement) {min_improvement=newMinImprovement;}
     void setHiddenLayerSize(int newsize) {layer1_size=newsize;}
     void setDirectSize(long long newsize) {direct_size=newsize;}
     void setDirectOrder(int newsize) {direct_order=newsize;}
@@ -297,6 +262,14 @@ public:
     void testNet();
     void testNbest();
     void testGen();
+    void computeRecurrentLayer_(int i_wordIndex);
+    void computeOutputLayer_();
+    void computeErrorOnOutput_(int i_trueWord);
+    void applyGradient_(double i_lr, const Vector& i_next, const Vector& i_prev, Matrix& i_mat, double beta);
+    void applyGradient_(double i_lr, const Vector& i_next, int i_column, Matrix& i_mat, double beta);
+    void computeErrorOnPrevious_(const Layer& i_nextLayer, Matrix& i_synMat, Layer& i_prevLayer);
+    void addGradient_(const Matrix& i_update, Matrix& o_mat , double beta2);
+    void applyGradient_(const Matrix& i_update, int i_updateColumn, Matrix& io_target, int i_targetColumn, double i_beta);
 };
 
 #endif
