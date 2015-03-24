@@ -325,6 +325,7 @@ void CRnnLM::initNet()
     syn1b.setZero(layer1_size, vocab_size);
 
     double* syn0_init=(double *)calloc(layer1_size*(vocab_size+layer1_size), sizeof(double));
+    double* syn0m_init=(double *)calloc(layer1_size*(morph_size), sizeof(double));
     double* syn1_init = (double *)calloc(layer1_size*(vocab_size+class_size), sizeof(double));
     double* syn0v_init=(double *)calloc(layer1_size*vocab_size, sizeof(double));
     double* syn0h_init=(double *)calloc(layer1_size*layer1_size, sizeof(double));
@@ -337,6 +338,11 @@ void CRnnLM::initNet()
     for (b=0; b<vocab_size+1; b++) for (a=0; a<layer1_size; a++)
     {
         syn1_init[a+b*layer1_size]=random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
+    }
+
+    for (b=0; b<layer1_size; b++) for (a=0; a<morph_size; a++)
+    {
+        syn0_init[a+b*(morph_size)]=random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1); //init block intended to initialize the same matrices as in mikolov's implementation (for debug purposes)
     }
 
     for(int i = 0; i < layer1_size; i++)
@@ -359,10 +365,12 @@ void CRnnLM::initNet()
 
     syn0v.setMatrix(syn0v_init, layer1_size, vocab_size);
     syn0h.setMatrix(syn0h_init, layer1_size, layer1_size);
+    syn0m.setMatrix(syn0m_init, layer1_size, morph_size);
     syn1.setMatrix(syn1_init, vocab_size, layer1_size);
 
     free(syn0v_init);
     free(syn0h_init);
+    free(syn0m_init);
     free(syn1_init);
 
     if (bptt>0)
@@ -377,6 +385,7 @@ void CRnnLM::initNet()
         }
 
         bptt_syn0v.setZero(layer1_size, vocab_size);
+        bptt_syn0m.setZero(layer1_size, vocab_size);
         bptt_syn0h.setZero(layer1_size, layer1_size);
     }
 

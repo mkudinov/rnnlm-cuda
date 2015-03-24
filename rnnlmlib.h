@@ -84,6 +84,7 @@ protected:
     int vocab_hash_size;
 
     int vocab_size;
+    int morph_size;
     int layer1_size;
     
     long long direct_size;
@@ -96,6 +97,7 @@ protected:
     std::vector<Layer> bptt_hidden;
     Matrix bptt_syn0h;
     Matrix bptt_syn0v;
+    Matrix bptt_syn0m;
     
     int gen;
 
@@ -107,6 +109,7 @@ protected:
 
     Matrix syn0v;		//weights between input and hidden layer
     Matrix syn0h;
+    Matrix syn0m;
     Matrix syn1;		//weights between hidden and output layer (or hidden and compression if compression>0)
     
     //backup used in training:

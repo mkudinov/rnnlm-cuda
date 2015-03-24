@@ -77,11 +77,11 @@ int main(int argc, char **argv)
 
     	printf("\t-train <file>\n");
         printf("\t\tUse text data from <file> to train rnnlm model\n");
-        
+
         printf("\t-class <int>\n");
         printf("\t\tWill use specified amount of classes to decompose vocabulary; default is 100\n");
-	
-	printf("\t-old-classes\n");
+
+    printf("\t-old-classes\n");
         printf("\t\tThis will use old algorithm to compute classes, which results in slower models but can be a bit more precise\n");
 
     	printf("\t-rnnlm <file>\n");
@@ -101,15 +101,15 @@ int main(int argc, char **argv)
 
     	printf("\t-hidden <int>\n");
     	printf("\t\tSet size of hidden layer; default is 30\n");
-    	
-    	printf("\t-compression <int>\n");
-    	printf("\t\tSet size of compression layer; default is 0 (not used)\n");
-    	
-    	printf("\t-direct <int>\n");
-    	printf("\t\tSets size of the hash for direct connections with n-gram features in millions; default is 0\n");
-    	
-    	printf("\t-direct-order <int>\n");
-    	printf("\t\tSets the n-gram order for direct connections (max %d); default is 3\n", MAX_NGRAM_ORDER);
+
+        printf("\t-compression <int>\n");
+        printf("\t\tSet size of compression layer; default is 0 (not used)\n");
+
+        printf("\t-direct <int>\n");
+        printf("\t\tSets size of the hash for direct connections with n-gram features in millions; default is 0\n");
+
+        printf("\t-direct-order <int>\n");
+        printf("\t\tSets the n-gram order for direct connections (max %d); default is 3\n", MAX_NGRAM_ORDER);
     	
     	printf("\t-bptt <int>\n");
     	printf("\t\tSet amount of steps to propagate error back in time; default is 0 (equal to simple RNN)\n");
@@ -119,9 +119,9 @@ int main(int argc, char **argv)
     	
     	printf("\t-one-iter\n");
     	printf("\t\tWill cause training to perform exactly one iteration over training data (useful for adapting final models on different data etc.)\n");
-    	
-    	printf("\t-anti-kasparek <int>\n");
-    	printf("\t\tModel will be saved during training after processing specified amount of words\n");
+
+        printf("\t-anti-kasparek <int>\n");
+        printf("\t\tModel will be saved during training after processing specified amount of words\n");
 
     	printf("\t-min-improvement <float>\n");
     	printf("\t\tSet minimal relative entropy improvement for training convergence; default is 1.003\n");
@@ -280,8 +280,8 @@ int main(int argc, char **argv)
 
         test_data_set=1;
     }
-    
-    
+
+
     //set class size parameter
     i=argPos((char *)"-class", argc, argv);
     if (i>0) {
@@ -292,7 +292,7 @@ int main(int argc, char **argv)
 
         class_size=atoi(argv[i+1]);
 
-	if (debug_mode>0)
+    if (debug_mode>0)
         printf("class size: %d\n", class_size);
     }
 
@@ -302,11 +302,11 @@ int main(int argc, char **argv)
     if (i>0) {
         old_classes=1;
 
-	if (debug_mode>0)
+    if (debug_mode>0)
         printf("Old algorithm for computing classes will be used\n");
     }
-    
-    
+
+
     //set lambda
     i=argPos((char *)"-lambda", argc, argv);
     if (i>0) {
@@ -375,7 +375,7 @@ int main(int argc, char **argv)
         if (debug_mode>0)
         printf("Sentences will be processed independently...\n");
     }
-    
+
     
     //set learning rate
     i=argPos((char *)"-alpha", argc, argv);
@@ -421,8 +421,8 @@ int main(int argc, char **argv)
         if (debug_mode>0)
         printf("Min improvement: %f\n", min_improvement);
     }
-    
-    
+
+
     //set anti kasparek
     i=argPos((char *)"-anti-kasparek", argc, argv);
     if (i>0) {
@@ -432,13 +432,13 @@ int main(int argc, char **argv)
         }
 
         anti_k=atoi(argv[i+1]);
-        
+
         if ((anti_k!=0) && (anti_k<10000)) anti_k=10000;
 
         if (debug_mode>0)
         printf("Model will be saved after each # words: %d\n", anti_k);
     }
-    
+
 
     //set hidden layer size
     i=argPos((char *)"-hidden", argc, argv);
@@ -453,8 +453,8 @@ int main(int argc, char **argv)
         if (debug_mode>0)
         printf("Hidden layer size: %d\n", hidden_size);
     }
-    
-    
+
+
     //set compression layer size
     i=argPos((char *)"-compression", argc, argv);
     if (i>0) {
@@ -468,8 +468,8 @@ int main(int argc, char **argv)
         if (debug_mode>0)
         printf("Compression layer size: %d\n", compression_size);
     }
-    
-    
+
+
     //set direct connections
     i=argPos((char *)"-direct", argc, argv);
     if (i>0) {
@@ -479,15 +479,15 @@ int main(int argc, char **argv)
         }
 
         direct=atoi(argv[i+1]);
-        
+
         direct*=1000000;
-	if (direct<0) direct=0;
+    if (direct<0) direct=0;
 
         if (debug_mode>0)
         printf("Direct connections: %dM\n", (int)(direct/1000000));
     }
-    
-    
+
+
     //set order of direct connections
     i=argPos((char *)"-direct-order", argc, argv);
     if (i>0) {
@@ -502,8 +502,8 @@ int main(int argc, char **argv)
         if (debug_mode>0)
         printf("Order of direct connections: %d\n", direct_order);
     }
-    
-    
+
+
     //set bptt
     i=argPos((char *)"-bptt", argc, argv);
     if (i>0) {
