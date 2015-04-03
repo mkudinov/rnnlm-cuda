@@ -35,16 +35,22 @@ set(TARGET_NAME rnnlm-cuda)
 set(rnnlm_SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR})
 
 set(rnnlm_SOURCES
+    ${rnnlm_SOURCE_DIR}/common.cpp
     ${rnnlm_SOURCE_DIR}/rnnlmlib.cpp
     ${rnnlm_SOURCE_DIR}/main.cpp
     ${rnnlm_SOURCE_DIR}/cuda-frontend.cpp
+    ${rnnlm_SOURCE_DIR}/vocabulary.cpp
+    ${rnnlm_SOURCE_DIR}/classic-rnnlm.cpp
     ${rnnlm_SOURCE_DIR}/cuda-backend.cu
 )
 
 set(rnnlm_HEADERS
+    ${rnnlm_SOURCE_DIR}/common.h
     ${rnnlm_SOURCE_DIR}/rnnlmlib.h
     ${rnnlm_SOURCE_DIR}/cuda-frontend.h
     ${rnnlm_SOURCE_DIR}/cuda-backend.h
+    ${rnnlm_SOURCE_DIR}/vocabulary.h
+    ${rnnlm_SOURCE_DIR}/classic-rnnlm.h
 )
 
 include_directories(

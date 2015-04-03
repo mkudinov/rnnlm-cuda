@@ -7,6 +7,69 @@ class Layer;
 
 enum {MUL, SUM};
 
+template<typename T>
+class CudaProxyLog
+{
+public:
+    CudaProxyLog(T *i_devicePointer):
+        m_deviceMemoryPointer(i_devicePointer) {}
+    T *deviceMemoryPointer() const {return m_deviceMemoryPointer;}
+private:
+    T *m_deviceMemoryPointer;
+};
+
+template<typename T>
+class CudaValue
+{
+public:
+    CudaValue(T i_value)
+    {
+        checkCudaErrors(cudaMalloc((void **) &m_deviceMemoryPointer, sizeof(T)));
+        checkCudaErrors(cudaMemcpy(m_deviceMemoryPointer, &i_value,  sizeof(T), cudaMemcpyHostToDevice));
+    }
+
+    CudaValue<T>& operator=(const T& i_value)
+    {
+        checkCudaErrors(cudaMemcpy(m_deviceMemoryPointer, &i_value,  sizeof(T), cudaMemcpyHostToDevice));
+        return *this;
+    }
+
+    CudaValue<T>& operator=(const CudaValue<T>& i_value)
+    {
+        checkCudaErrors(cudaMemcpy(m_deviceMemoryPointer, i_value.deviceMemoryPointer(), sizeof(T), cudaMemcpyDeviceToDevice));
+        return *this;
+    }
+
+    CudaValue<T>& operator+=(const CudaValue<T>& i_value)
+    {
+        CudaDevice::getDevice().cudaAddScalarToScalar(i_value.deviceMemoryPointer(), m_deviceMemoryPointer);
+        return *this;
+    }
+
+    CudaValue<T>& operator+=(const CudaProxyLog<T>& i_value)
+    {
+        CudaDevice::getDevice().cudaAddLog(i_value.deviceMemoryPointer(), m_deviceMemoryPointer);
+        return *this;
+    }
+
+    ~CudaValue()
+    {
+        checkCudaErrors(cudaFree(m_deviceMemoryPointer));
+    }
+
+    T *deviceMemoryPointer() const {return m_deviceMemoryPointer;}
+
+    explicit operator T()
+    {
+        T o_result = 0;
+        checkCudaErrors(cudaMemcpy(&o_result, m_deviceMemoryPointer, sizeof(T), cudaMemcpyDeviceToHost));
+        return o_result;
+    }
+
+private:
+    T *m_deviceMemoryPointer;
+};
+
 template<typename LeftT, typename RightT, size_t>
 struct ProxyOp
 {
@@ -82,11 +145,12 @@ private:
 class Vector
 {
 public:
-    Vector() {m_size = -1;}
+    Vector() {m_size = -1; m_deviceMemoryPointer = NULL; }
     ~Vector()
     {
-        cudaFree(m_deviceMemoryPointer);
-        cudaFree(m_tmpDeviceMemoryPointer);
+     //   std::cout << "DESTRUCT!!!!!" <<std::endl;
+        if(m_deviceMemoryPointer != NULL) cudaFree(m_deviceMemoryPointer);
+      //  printf("%llu \n", (size_t)m_deviceMemoryPointer);
     }
     void setConstant(size_t i_size, double i_constToFill);
     void setConstant(double i_constToFill);
@@ -158,9 +222,13 @@ public:
         return m_buffered[i_coordinate];
     }
 
+    CudaProxyLog<double> elementLog(int i_coordinate)
+    {
+        return CudaProxyLog<double>(m_deviceMemoryPointer + i_coordinate);
+    }
+
     void print() const;
     double *deviceMemoryPointer() const {return m_deviceMemoryPointer;}
-    double *tmpDeviceMemoryPointer() const {return m_tmpDeviceMemoryPointer;}
     void erase()
     {
         m_deviceMemoryPointer = 0;
@@ -179,7 +247,6 @@ private:
         return CudaDevice::getDevice().cudaGetVectorCoordinate(m_deviceMemoryPointer, i_coordinate);
     }
     double *m_deviceMemoryPointer;
-    double *m_tmpDeviceMemoryPointer;
     int m_size;
     std::map<int,double> m_buffered;
 };

@@ -69,6 +69,8 @@ public:
     void addMatrixColumnToVector(double *i_matrixDeviceMemoryPointer, int i_nRows, int i_nColumns, int i_column, double *o_vectorDeviceMemoryPointer) const;
     void cudaLogisticActivation(double *io_vector, int i_size) const;
     void setZeroVector(double *io_deviceMemoryPointer, int m_size) const;
+    void cudaAddLog(double* i_rvalue, double *o_lvalue) const;
+    void cudaAddScalarToScalar(double* i_rvalue, double *o_lvalue) const;
 
     static const CudaDevice& getDevice()
     {

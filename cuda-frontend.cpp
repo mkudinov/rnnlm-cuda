@@ -1,10 +1,10 @@
+#include <unistd.h>
 #include "cuda-frontend.h"
 
 void Vector::setConstant(size_t i_size, double i_constToFill)
 {
     m_size  = i_size;
     checkCudaErrors(cudaMalloc((void **) &m_deviceMemoryPointer, i_size * sizeof(double)));
-    checkCudaErrors(cudaMalloc((void **) &m_tmpDeviceMemoryPointer, i_size * sizeof(double)));
     double* initializer =(double *)calloc(i_size, sizeof(double));
     for(size_t i = 0; i < i_size; i++)
     {
@@ -36,24 +36,21 @@ void Vector::setArray(size_t i_size, double *i_actiivationInitializer)
 {
     m_size = i_size;
     checkCudaErrors(cudaMalloc((void **) &m_deviceMemoryPointer, i_size * sizeof(double)));
-    checkCudaErrors(cudaMalloc((void **) &m_tmpDeviceMemoryPointer, i_size * sizeof(double)));
     double* initializer =(double *)calloc(i_size, sizeof(double));
     checkCudaErrors(cudaMemcpy(m_deviceMemoryPointer, i_actiivationInitializer, i_size * sizeof(double), cudaMemcpyHostToDevice));
     free(initializer);
-   // m_properties = Properties(m_deviceMemoryPointer, m_size);
     m_buffered.clear();
 }
 
 void Vector::print() const
 {
-    double *buffer = (double *)malloc(m_size * sizeof(double));
+    double buffer[m_size];
     checkCudaErrors(cudaMemcpy(buffer, m_deviceMemoryPointer, m_size * sizeof(double), cudaMemcpyDeviceToHost));
     std::cout << std::endl;
     for (int i=0; i<m_size; i++)
     {
         std::cout << buffer[i] << std::endl;
     }
-    free(buffer);
 }
 
 void Layer::setConstant(size_t i_size, double i_constToFill)
@@ -171,7 +168,7 @@ double Matrix::getElement(double i_row, double i_column)
 
 void Vector::update()
 {
-    double *buffer = (double*)malloc(m_buffered.size() * sizeof(double));
+    double buffer[m_buffered.size()];// = (double*)malloc(m_buffered.size() * sizeof(double));
 
     for(auto& p : m_buffered)
     {
@@ -179,8 +176,6 @@ void Vector::update()
     }
 
     setArray(m_buffered.size(), buffer);
-
-    free(buffer);
 }
 
 void Vector::addMatrixColumn(const Matrix& i_rhs, int i_column)

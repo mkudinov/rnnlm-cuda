@@ -151,6 +151,11 @@ __global__ void softmaxErrorActivationKernel(double *i_activationVector, double 
     }
 }
 
+__global__ void addLog(double *i_rvalue, double *o_lvalue)
+{
+    *o_lvalue += log10(*i_rvalue);
+}
+
 CudaDevice::CudaDevice()
 {
     // By default, we use device 0, otherwise we override the device ID based on what is provided at the command line
@@ -216,7 +221,6 @@ void CudaDevice::cudaVectorByMatrix(double *i_matrixDevicePointer, double *i_vec
 void CudaDevice::cudaSoftmaxActivation(double *io_devicePointer, int i_vectorSize) const
 {
     apply_exp<<<1, REDUCE_SIZE>>>(io_devicePointer, m_deviceBufInt, i_vectorSize);
-
 }
 
 double CudaDevice::cudaGetVectorCoordinate(double *i_vectorDevicePointer, int i_coordinate) const
@@ -373,4 +377,15 @@ void CudaDevice::setZeroVector(double *io_deviceMemoryPointer, int m_size) const
 {
     const double alpha = 0;
     checkCudaErrors(cublasDscal(m_cublasHandle, m_size, &alpha, io_deviceMemoryPointer, 1 ));
+}
+
+void CudaDevice::cudaAddLog(double* i_rvalue, double *o_lvalue) const
+{
+    addLog<<<1,1>>>(i_rvalue, o_lvalue);
+}
+
+void CudaDevice::cudaAddScalarToScalar(double* i_rvalue, double *o_lvalue) const
+{
+    const double alpha = 1;
+    checkCudaErrors(cublasDaxpy(m_cublasHandle, 1, &alpha, i_rvalue, 1,  o_lvalue, 1));
 }
