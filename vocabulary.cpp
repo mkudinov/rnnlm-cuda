@@ -92,7 +92,7 @@ void Vocabulary::clearHash()
         m_hash[a] =- 1;
 }
 
-void Vocabulary::printIntoFile(char* str) {
+void Vocabulary::printIntoFile_(char* str) {
     char print_file[MAX_STRING];
     strcpy(print_file, str);
     FILE* fw = fopen(print_file, "w");
@@ -184,6 +184,13 @@ void Vocabulary::readFromFile(FILE *fi)
     }
 }
 
+void Vocabulary::writeToFile(FILE *fo)
+{
+    fprintf(fo, "\nVocabulary:\n");
+    fprintf(fo, "vocabulary size: %d\n", m_size);
+    for (int a=0; a<m_size; a++) fprintf(fo, "%6d\t%10d\t%s\n", a, m_words[a].cn, m_words[a].word);
+}
+
 int InputSequence::readWordIndex_()
 {
     char word[MAX_STRING];
@@ -245,7 +252,7 @@ void InputSequence::goToPosition(int i_position)
     if(feof(m_file) || i_position == 0)
     {
         fclose(m_file);
-        fopen(m_fileName.c_str(), "rb");
+        m_file = fopen(m_fileName.c_str(), "rb");
         m_wordsRead = 0;
     }
     if (i_position>0)

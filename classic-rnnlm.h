@@ -37,10 +37,10 @@ public:
     void learnNet(int last_word, int word, double alpha, double beta, int counter);
     void copyHiddenLayerToInput();
     bool independent() const {return m_independent;}
-    //double wordScore(int word) {return neu2.ac[word];}
     void initNet(int i_vocabSize, const ModelOptions& i_options);
     double logProb() {return double(m_logProb);}
     void resetLogProb() { m_logProb = 0;}
+    void writeToFile(FILE *fo, FileTypeEnum filetype);
 
 private:
     CudaValue<double> m_logProb;

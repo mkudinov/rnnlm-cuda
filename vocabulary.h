@@ -32,9 +32,10 @@ public:
     void clearHash();
     void sort();
     void readFromFile(FILE *fi);
+    void writeToFile(FILE *fo);
     vocab_word& operator[](size_t i) { return m_words[i];}
 
-    void printIntoFile(char* str);
+
     int initFromFile(const std::string& i_fileName);
 
     vocab_word *words() const {return m_words;}
@@ -53,6 +54,7 @@ public:
     }
 
 private:
+    void printIntoFile_(char* str);
     int getWordHash_(char *i_word);
     int m_hashSize;
     int m_maxSize;
@@ -101,7 +103,7 @@ public:
     std::string fileName() const {return m_fileName;}
     FILE* file() const { return m_file; }
     Vocabulary *vocab() const { return m_vocab;}
-    size_t nWordsRead() const {return m_wordsRead;}
+  //  size_t nWordsRead() const {return m_wordsRead;}
     void goToPosition(int i_position);
     int next();
     bool end() const;

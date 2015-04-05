@@ -234,10 +234,17 @@ void ClassicRnnlm::clearMemory()   //cleans hidden layer activation + bptt histo
 
 void ClassicRnnlm::computeRecurrentLayer_(int i_word)
 {
+    if(i_word != -1)
+    {
     neu1.ac = syn0h * neu0.ac;
     //neu0.ac.print();
   //  syn0h.print();
     neu1.ac.addMatrixColumn(syn0v, i_word);
+    }
+    else
+    {
+        neu1.ac = syn0h * neu0.ac;
+    }
     neu1.ac.logisticActivation();
   //      neu1.ac.print();
 }
@@ -385,6 +392,9 @@ void ClassicRnnlm::makeBptt_(int word, double alpha, double beta, int counter)
 void ClassicRnnlm::readFromFile(FILE *fi, FileTypeEnum filetype)
 {
     goToDelimiter(':', fi);
+    fscanf(fi, "%d", &m_vocabSize);
+    //
+    goToDelimiter(':', fi);
     fscanf(fi, "%d", &layer1_size);
     //
     goToDelimiter(':', fi);
@@ -392,10 +402,6 @@ void ClassicRnnlm::readFromFile(FILE *fi, FileTypeEnum filetype)
     //
     goToDelimiter(':', fi);
     fscanf(fi, "%d", &bptt_block);
-    //
-    int vocab_size;
-    goToDelimiter(':', fi);
-    fscanf(fi, "%d", &m_vocabSize);
     //
     goToDelimiter(':', fi);
     fscanf(fi, "%d", &m_independent);
@@ -493,6 +499,107 @@ void ClassicRnnlm::readFromFile(FILE *fi, FileTypeEnum filetype)
     free(syn1_init);
 
     saveWeights();
+}
+
+void ClassicRnnlm::writeToFile(FILE *fo, FileTypeEnum filetype)
+{
+    float fl = 0;
+
+    fprintf(fo, "vocabulary size: %d\n", m_vocabSize);
+    fprintf(fo, "hidden layer size: %d\n", layer1_size);
+
+    fprintf(fo, "bptt: %d\n", bptt);
+    fprintf(fo, "bptt block: %d\n", bptt_block);
+    fprintf(fo, "independent sentences mode: %d\n", m_independent);
+    neu1.ac.prepareToSave();
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\nHidden layer activation:\n");
+        for (int a=0; a<layer1_size; a++) fprintf(fo, "%.4f\n", neu1.ac[a]);
+    }
+    if (filetype==BINARY)
+    {
+        for (int a=0; a<layer1_size; a++)
+        {
+            fl=neu1.ac[a];
+            fwrite(&fl, 4, 1, fo);
+        }
+    }
+    //////////
+    syn0v.prepareToSave();
+    syn0h.prepareToSave();
+    syn1.prepareToSave();
+
+//    syn0v.print();
+//    syn0h.print();
+//    syn1.print();
+//    neu1.ac.print();
+
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\nWeights 0->1:\n");
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fprintf(fo, "%.4f\n", syn0v.getElement(b,a));
+            }
+            for (int a=0; a<layer1_size; a++)
+            {
+                fprintf(fo, "%.4f\n", syn0h.getElement(b,a));
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fl=syn0v.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+            for (int a=0; a<layer1_size; a++)
+            {
+                fl=syn0h.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+        }
+    }
+    /////////
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\n\nWeights 1->2:\n");
+        for (int b=0; b<m_vocabSize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fprintf(fo, "%.4f\n", syn1.getElement(b,a));
+            }
+        }
+        for (int a=0; a<layer1_size; a++)
+        {
+            fprintf(fo, "%.4f\n", 1.0); //we removed classes so for compatibility with the original tool we leave here class weights
+        }
+
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<m_vocabSize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fl=syn1.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+        }
+        for (int a=0; a<layer1_size; a++)
+        {
+            fl=1.0;
+            fwrite(&fl, 4, 1, fo); //same here
+        }
+    }
+    ////////
 }
 
 }

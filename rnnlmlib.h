@@ -18,16 +18,13 @@ struct Snapshot
     bool alpha_divide;
     double beta;
     float min_improvement;
-    double logp, llogp;
-    int counter;
-    int train_cur_pos;
     int train_words;
     int iter;
     std::string valid_file;
     std::string train_file;
 
     void readFromFile(FILE *fi);
-    void writeToFile(FILE *fi);
+    void writeToFile(FILE *fo);
 };
 
 class CRnnLM
@@ -54,8 +51,8 @@ private:
 
     void initTraining_(char *train_file, char *valid_file, char *snapshot_file, const ModelOptions& i_options);
     std::tuple<double, clock_t, int>  learningPhase_();
-    double validationPhase_();
-    void saveSnapshot_();
+    std::tuple<double, int> validationPhase_();
+    void saveSnapshot_(const std::string& i_trainFileName, const std::string& i_validFileName, const std::string& i_snapshotFileName);
 
     int debug_mode;
     FileTypeEnum filetype;

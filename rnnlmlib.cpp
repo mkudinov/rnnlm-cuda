@@ -16,7 +16,7 @@
 namespace RNNLM
 {
 
-CRnnLM::CRnnLM()		//constructor initializes variables
+CRnnLM::CRnnLM()		//constructor initializes variablesp
 {
     filetype=TEXT;
     gradient_cutoff=15;
@@ -99,10 +99,10 @@ std::tuple<double, clock_t, int> CRnnLM::learningPhase_()
       return trainResult;
 }
 
-double CRnnLM::validationPhase_()
+std::tuple<double, int> CRnnLM::validationPhase_()
 {
     m_model.netFlush();
-  //  int wordcn=0;
+    int wordcn=0;
     int last_word = 0;
 
     m_validSource.goToPosition(0);
@@ -112,11 +112,10 @@ double CRnnLM::validationPhase_()
         m_model.computeNet(last_word, word);      //compute probability distribution
         if(m_validSource.end()) break;      //end of file: report LOGP, PPL
 
-//        if (word!=-1)
-//        {
-//            logp += log10(m_model.wordScore(word));
-//            wordcn++;
-//        }
+        if (word!=-1)
+        {
+            wordcn++;
+        }
 
         m_model.copyHiddenLayerToInput();
         last_word=word;
@@ -124,9 +123,11 @@ double CRnnLM::validationPhase_()
         if (m_model.independent() && (word==0)) m_model.clearMemory();
     }
 
-    double logp = m_model.logProb();
+    std::tuple<double, int> validResult;
+    std::get<0>(validResult) = m_model.logProb();
+    std::get<1>(validResult) = wordcn;
     m_model.resetLogProb();
-    return logp;
+    return validResult;
 }
 
 void CRnnLM::trainNet(char *train_file, char *valid_file, char *snapshot_file, const ModelOptions& i_options)
@@ -147,8 +148,8 @@ void CRnnLM::trainNet(char *train_file, char *valid_file, char *snapshot_file, c
         int sampleSize;
         std::tie(train_logp, train_time, sampleSize) = learningPhase_();
         printf("%cIter: %3d\tAlpha: %f\t   TRAIN entropy: %.4f    Words/sec: %.1f   ", 13, iter, alpha, -train_logp/log10(2)/sampleSize, m_trainWords/((double)(train_time)/1000000.0));
-        logp = validationPhase_();
-        printf("VALID entropy: %.4f\n", -logp/log10(2)/m_validSource.nWordsRead());
+        std::tie(logp, sampleSize) = validationPhase_();
+        printf("VALID entropy: %.4f\n", -logp/log10(2)/sampleSize);
 
         if (logp<llogp)
         {
@@ -165,7 +166,7 @@ void CRnnLM::trainNet(char *train_file, char *valid_file, char *snapshot_file, c
                 alpha_divide=1;
             else
             {
-                saveSnapshot_();
+                saveSnapshot_(train_file, valid_file, snapshot_file);
                 break;
             }
         }
@@ -174,161 +175,42 @@ void CRnnLM::trainNet(char *train_file, char *valid_file, char *snapshot_file, c
 
         llogp=logp;
         logp=0;
-        saveSnapshot_();
+        saveSnapshot_(train_file, valid_file, snapshot_file);
         iter++;
     }
 }
 
-void CRnnLM::saveSnapshot_()       //will save the whole network structure
+void CRnnLM::saveSnapshot_(const std::string& i_trainFileName, const std::string& i_validFileName, const std::string& i_snapshotFileName)       //will save the whole network structure
 {
-//    FILE *fo;
-//    int a, b;
-//    char str[1000];
-//    float fl;
+    FILE *fo;
+    char str[1000];
 
-//    sprintf(str, "%s.temp", rnnlm_file);
+    sprintf(str, "%s.temp", i_snapshotFileName.c_str());
 
-//    fo=fopen(str, "wb");
-//    if (fo==NULL) {
-//        printf("Cannot create file %s\n", rnnlm_file);
-//        exit(1);
-//    }
-//    //fprintf(fo, "version: %d\n", version);
-//    fprintf(fo, "file format: %d\n\n", filetype);
+    fo=fopen(str, "wb");
+    if (fo==NULL) {
+        printf("Cannot create file %s\n", i_snapshotFileName.c_str());
+        exit(1);
+    }
 
-//    fprintf(fo, "training data file: %s\n", train_file);
-//    fprintf(fo, "validation data file: %s\n\n", valid_file);
+    Snapshot snapshot;
+    snapshot.alpha = alpha;
+    snapshot.alpha_divide = alpha_divide;
+    snapshot.starting_alpha = starting_alpha;
+    snapshot.beta = beta;
+    snapshot.filetype = filetype;
+    snapshot.gradient_cutoff = gradient_cutoff;
+    snapshot.iter = iter;
+    snapshot.train_file = i_trainFileName.c_str();
+    snapshot.valid_file = i_validFileName.c_str();
+    snapshot.train_words = m_trainWords;
 
-//    fprintf(fo, "last probability of validation data: %f\n", llogp);
-//    fprintf(fo, "number of finished iterations: %d\n", iter);
+    snapshot.writeToFile(fo);
+    m_vocab.writeToFile(fo);
+    m_model.writeToFile(fo, filetype);
 
-//    fprintf(fo, "current position in training data: %d\n", train_cur_pos);
-//    fprintf(fo, "current probability of training data: %f\n", logp);
-//    fprintf(fo, "save after processing # words: %d\n", 0);
-//    fprintf(fo, "# of training words: %d\n", train_words);
-
-//    fprintf(fo, "input layer size: %d\n", vocab_size+layer1_size);
-//    fprintf(fo, "hidden layer size: %d\n", layer1_size);
-//    fprintf(fo, "compression layer size: %d\n", 0);
-//    fprintf(fo, "output layer size: %d\n", vocab_size + 1);
-
-//    fprintf(fo, "direct connections: %lld\n", 0);
-//    fprintf(fo, "direct order: %d\n", 0);
-
-//    fprintf(fo, "bptt: %d\n", bptt);
-//    fprintf(fo, "bptt block: %d\n", bptt_block);
-
-//    fprintf(fo, "vocabulary size: %d\n", vocab_size);
-//    fprintf(fo, "class size: %d\n", class_size);
-
-//    fprintf(fo, "old classes: %d\n", old_classes);
-//    fprintf(fo, "independent sentences mode: %d\n", independent);
-
-//    fprintf(fo, "starting learning rate: %f\n", starting_alpha);
-//    fprintf(fo, "current learning rate: %f\n", alpha);
-//    fprintf(fo, "learning rate decrease: %d\n", alpha_divide);
-//    fprintf(fo, "\n");
-
-//    fprintf(fo, "\nVocabulary:\n");
-//    for (a=0; a<vocab_size; a++) fprintf(fo, "%6d\t%10d\t%s\t%d\n", a, vocab[a].cn, vocab[a].word, vocab[a].class_index);
-
-//    neu1.ac.prepareToSave();
-//    if (filetype==TEXT)
-//    {
-//        fprintf(fo, "\nHidden layer activation:\n");
-//        for (a=0; a<layer1_size; a++) fprintf(fo, "%.4f\n", neu1.ac[a]);
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (a=0; a<layer1_size; a++)
-//        {
-//            fl=neu1.ac[a];
-//            fwrite(&fl, 4, 1, fo);
-//        }
-//    }
-//    //////////
-//    syn0v.prepareToSave();
-//    syn0h.prepareToSave();
-//    syn1.prepareToSave();
-
-////    syn0v.print();
-////    syn0h.print();
-////    syn1.print();
-////    neu1.ac.print();
-
-//    if (filetype==TEXT)
-//    {
-//        fprintf(fo, "\nWeights 0->1:\n");
-//        for (b=0; b<layer1_size; b++)
-//        {
-//            for (a=0; a<vocab_size; a++)
-//            {
-//                fprintf(fo, "%.4f\n", syn0v.getElement(b,a));
-//            }
-//            for (a=0; a<layer1_size; a++)
-//            {
-//                fprintf(fo, "%.4f\n", syn0h.getElement(b,a));
-//            }
-//        }
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (b=0; b<layer1_size; b++)
-//        {
-//            for (a=0; a<vocab_size; a++)
-//            {
-//                fl=syn0v.getElement(b,a);
-//                fwrite(&fl, 4, 1, fo);
-//            }
-//            for (a=0; a<layer1_size; a++)
-//            {
-//                fl=syn0h.getElement(b,a);
-//                fwrite(&fl, 4, 1, fo);
-//            }
-//        }
-//    }
-//    /////////
-//    if (filetype==TEXT)
-//    {
-//        fprintf(fo, "\n\nWeights 1->2:\n");
-//        for (b=0; b<vocab_size; b++)
-//        {
-//            for (a=0; a<layer1_size; a++)
-//            {
-//                fprintf(fo, "%.4f\n", syn1.getElement(b,a));
-//            }
-//        }
-//        for (a=0; a<layer1_size; a++)
-//        {
-//            fprintf(fo, "%.4f\n", 1.0); //we removed classes so for compatibility with the original tool we leave here class weights
-//        }
-
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (b=0; b<vocab_size; b++)
-//        {
-//            for (a=0; a<layer1_size; a++)
-//            {
-//                fl=syn1.getElement(b,a);
-//                fwrite(&fl, 4, 1, fo);
-//            }
-//        }
-//        for (a=0; a<layer1_size; a++)
-//        {
-//            fl=1.0;
-//            fwrite(&fl, 4, 1, fo); //same here
-//        }
-//    }
-//    ////////
-//    if (filetype==TEXT)
-//    {
-//        fprintf(fo, "\nDirect connections:\n"); //for compatibility
-//    }
-//    ////////
-//    fclose(fo);
-
-//    rename(str, rnnlm_file);
+    fclose(fo);
+    rename(str, i_snapshotFileName.c_str());
 }
 
 void CRnnLM::restoreFromSnapshot_(char *i_snapshot_file, Vocabulary& o_vocab, ClassicRnnlm& o_model)    //will read whole network structure
@@ -362,16 +244,7 @@ void Snapshot::readFromFile(FILE *fi)
     fscanf(fi, "%s", valid_file.c_str());
     //
     goToDelimiter(':', fi);
-    fscanf(fi, "%lf", &llogp);
-    //
-    goToDelimiter(':', fi);
     fscanf(fi, "%d", &iter);
-    //
-    goToDelimiter(':', fi);
-    fscanf(fi, "%d", &train_cur_pos);
-    //
-    goToDelimiter(':', fi);
-    fscanf(fi, "%lf", &logp);
     //
     int train_words;
     goToDelimiter(':', fi);
@@ -387,5 +260,20 @@ void Snapshot::readFromFile(FILE *fi)
     goToDelimiter(':', fi);
     fscanf(fi, "%d", &alpha_divide);
 }
+
+void Snapshot::writeToFile(FILE *fo)
+{
+    fprintf(fo, "RNNLM model file\n");
+    fprintf(fo, "file format: %d\n\n", filetype);
+    fprintf(fo, "training data file: %s\n", train_file.c_str());
+    fprintf(fo, "validation data file: %s\n\n", valid_file.c_str());
+    fprintf(fo, "number of finished iterations: %d\n", iter);
+    fprintf(fo, "# of training words: %d\n", train_words);
+    fprintf(fo, "starting learning rate: %f\n", starting_alpha);
+    fprintf(fo, "current learning rate: %f\n", alpha);
+    fprintf(fo, "learning rate decrease: %d\n", alpha_divide);
+    fprintf(fo, "\n");
+}
+
 
 }
