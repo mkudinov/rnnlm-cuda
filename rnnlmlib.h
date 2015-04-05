@@ -12,12 +12,9 @@ namespace RNNLM
 struct Snapshot
 {
     FileTypeEnum filetype;
-    double gradient_cutoff;
     double alpha;
     double starting_alpha;
     bool alpha_divide;
-    double beta;
-    float min_improvement;
     int train_words;
     int iter;
     std::string valid_file;

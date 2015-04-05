@@ -161,10 +161,10 @@ Vocabulary& Vocabulary::operator=(Vocabulary&& i_rhs)
 void Vocabulary::readFromFile(FILE *fi)
 {
     int vocab_size;
+    m_size = 0;
     goToDelimiter(':', fi);
     fscanf(fi, "%d", &vocab_size);
     //read normal vocabulary
-    goToDelimiter(':', fi);
     if (m_maxSize < vocab_size)
     {
         if (m_words != NULL)
@@ -181,14 +181,16 @@ void Vocabulary::readFromFile(FILE *fi)
         fscanf(fi, "%d%d", &b, &m_words[a].cn);
         InputSequence::readWord(m_words[a].word, fi);
         fscanf(fi, "%d", &b);
+        m_size++;
     }
 }
 
 void Vocabulary::writeToFile(FILE *fo)
 {
-    fprintf(fo, "\nVocabulary:\n");
+    fprintf(fo, "Vocabulary\n");
     fprintf(fo, "vocabulary size: %d\n", m_size);
     for (int a=0; a<m_size; a++) fprintf(fo, "%6d\t%10d\t%s\n", a, m_words[a].cn, m_words[a].word);
+    fprintf(fo, "\n");
 }
 
 int InputSequence::readWordIndex_()

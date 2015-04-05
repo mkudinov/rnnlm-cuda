@@ -197,9 +197,7 @@ void CRnnLM::saveSnapshot_(const std::string& i_trainFileName, const std::string
     snapshot.alpha = alpha;
     snapshot.alpha_divide = alpha_divide;
     snapshot.starting_alpha = starting_alpha;
-    snapshot.beta = beta;
     snapshot.filetype = filetype;
-    snapshot.gradient_cutoff = gradient_cutoff;
     snapshot.iter = iter;
     snapshot.train_file = i_trainFileName.c_str();
     snapshot.valid_file = i_validFileName.c_str();
@@ -225,7 +223,18 @@ void CRnnLM::restoreFromSnapshot_(char *i_snapshot_file, Vocabulary& o_vocab, Cl
     }
 
     Snapshot snapshot;
+
     snapshot.readFromFile(fi);
+
+    alpha = snapshot.alpha;
+    alpha_divide = snapshot.alpha_divide;
+    starting_alpha = snapshot.starting_alpha;
+    filetype = snapshot.filetype;
+    iter = snapshot.iter;
+    std::string train_file = snapshot.train_file;
+    std::string valid_file = snapshot.valid_file;
+    m_trainWords = snapshot.train_words;
+
     o_vocab.readFromFile(fi);
     m_vocabSize = o_vocab.size();
     o_model.readFromFile(fi, filetype);
@@ -237,11 +246,14 @@ void Snapshot::readFromFile(FILE *fi)
     goToDelimiter(':', fi);
     fscanf(fi, "%d", &filetype);
     //
+    char buff[100];
     goToDelimiter(':', fi);
-    fscanf(fi, "%s", train_file.c_str());
+    fscanf(fi, "%s", buff);
+    train_file = buff;
     //
     goToDelimiter(':', fi);
-    fscanf(fi, "%s", valid_file.c_str());
+    fscanf(fi, "%s", buff);
+    valid_file = buff;
     //
     goToDelimiter(':', fi);
     fscanf(fi, "%d", &iter);

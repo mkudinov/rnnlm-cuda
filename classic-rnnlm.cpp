@@ -504,7 +504,7 @@ void ClassicRnnlm::readFromFile(FILE *fi, FileTypeEnum filetype)
 void ClassicRnnlm::writeToFile(FILE *fo, FileTypeEnum filetype)
 {
     float fl = 0;
-
+    fprintf(fo, "Model\n");
     fprintf(fo, "vocabulary size: %d\n", m_vocabSize);
     fprintf(fo, "hidden layer size: %d\n", layer1_size);
 
