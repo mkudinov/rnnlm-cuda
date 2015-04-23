@@ -41,6 +41,7 @@ set(rnnlm_SOURCES
     ${rnnlm_SOURCE_DIR}/cuda-frontend.cpp
     ${rnnlm_SOURCE_DIR}/vocabulary.cpp
     ${rnnlm_SOURCE_DIR}/classic-rnnlm.cpp
+    ${rnnlm_SOURCE_DIR}/rnnlm-russian-morphology.cpp
     ${rnnlm_SOURCE_DIR}/cuda-backend.cu
 )
 
@@ -51,6 +52,7 @@ set(rnnlm_HEADERS
     ${rnnlm_SOURCE_DIR}/cuda-backend.h
     ${rnnlm_SOURCE_DIR}/vocabulary.h
     ${rnnlm_SOURCE_DIR}/classic-rnnlm.h
+    ${rnnlm_SOURCE_DIR}/rnnlm-russian-morphology.h
 )
 
 include_directories(
