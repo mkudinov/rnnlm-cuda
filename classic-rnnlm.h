@@ -76,7 +76,6 @@ private:
     std::vector<Layer> bptt_hidden;
     Matrix bptt_syn0h;
     Matrix bptt_syn0v;
-    Matrix bptt_syn0m;
 
     void computeRecurrentLayer_(int i_wordIndex);
     void computeOutputLayer_();

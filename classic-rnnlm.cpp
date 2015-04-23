@@ -190,7 +190,6 @@ void ClassicRnnlm::initNet_()
         }
 
         bptt_syn0v.setZero(layer1_size, m_vocabSize);
-        bptt_syn0m.setZero(layer1_size, m_vocabSize);
         bptt_syn0h.setZero(layer1_size, layer1_size);
     }
 
