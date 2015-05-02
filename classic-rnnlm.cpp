@@ -34,7 +34,7 @@ void ClassicRnnlm::learnNet(int last_word, int word, double alpha, double beta, 
 
     if (bptt<=1)
     {
-        neu1.softmaxErrorActivation();
+        neu1.logisticErrorActivation();
 
         //weight update 1->0
         if (last_word!=-1)
@@ -329,7 +329,7 @@ void ClassicRnnlm::makeBptt_(int word, double alpha, double beta, int counter)
 
     for (int step=0; step < bptt+bptt_block-2; step++)
     {
-        neu1.softmaxErrorActivation();
+        neu1.logisticErrorActivation();
         //weight update 1->0
         int a = bptt_history[step];
         if (a!=-1)

@@ -2,57 +2,63 @@
 
 namespace RNNLM
 {
-void RnnlmRussianMorphology::computeNet(int last_word, int last_morph, int word)
+void RnnlmRussianMorphology::computeNet(int last_word, int last_morph, int word, int morph)
 {
     computeRecurrentLayer_(last_word, last_morph);
     if (word!=-1)
     {
         computeOutputLayer_();
-        incremetLogProbByWordLP_(word, last_morph);
+        incremetLogProbByWordLP_(word, morph);
     }
 }
 
-void RnnlmRussianMorphology::learnNet(int last_word, int word, double alpha, double beta, int counter)
+void RnnlmRussianMorphology::learnNet(int last_word, int last_morph, int word, int morph, double alpha, double beta, int counter)
 {
-//    if (bptt>0) updateBptt_(last_word); //shift bptt layers
+    if (bptt>0) updateBptt_(last_word, last_morph); //shift bptt layers
+    double beta2 = beta*alpha;
+    if (word==-1) return;
+    computeErrorOnOutput_(word, morph);
+    computeErrorOnHidden_(neu2v, neu2m, syn1v, syn1m, neu1);
 
-//    double beta2 = beta*alpha;
+    if ((counter%10)==0)
+    {
+        applyGradient_(alpha, neu2v.er, neu1.ac, syn1v, beta2);
+        applyGradient_(alpha, neu2m.er, neu1.ac, syn1m, beta2);
+    }
+    else
+    {
+        applyGradient_(alpha, neu2v.er, neu1.ac, syn1v, 0);
+        applyGradient_(alpha, neu2m.er, neu1.ac, syn1m, 0);
+    }
 
-//    if (word==-1) return;
+  //  syn1.print();
 
-//    computeErrorOnOutput_(word);
-
-//    computeErrorOnPrevious_(neu2, syn1, neu1);
-
-//    if ((counter%10)==0)
-//        applyGradient_(alpha, neu2.er, neu1.ac, syn1, beta2);
-//    else
-//        applyGradient_(alpha, neu2.er, neu1.ac, syn1, 0);
-
-//  //  syn1.print();
-
-//    if (bptt<=1)
-//    {
-//        neu1.softmaxErrorActivation();
-
-//        //weight update 1->0
-//        if (last_word!=-1)
-//        {
-//            if ((counter%10)==0)
-//                applyGradient_(alpha, neu1.er, last_word, syn0v, beta2);
-//            else
-//                applyGradient_(alpha, neu1.er, last_word, syn0v, 0);
-//        }
-
-//        if ((counter%10)==0)
-//            applyGradient_(alpha,neu1.er,neu0.ac,syn0h,beta2);
-//        else
-//            applyGradient_(alpha,neu1.er,neu0.ac,syn0h,0);
-//    }
-//    else		//BPTT
-//    {
-//        makeBptt_(word, alpha, beta, counter);
-//    }
+    if (bptt<=1)
+    {
+        neu1.logisticErrorActivation();
+        //weight update 1->0
+        if (last_word!=-1)
+        {
+            if ((counter%10)==0)
+            {
+                applyGradient_(alpha, neu1.er, last_word, syn0v, beta2);
+                applyGradient_(alpha, neu1.er, last_morph, syn0m, beta2);
+            }
+            else
+            {
+                applyGradient_(alpha, neu1.er, last_word, syn0v, 0);
+                applyGradient_(alpha, neu1.er, last_morph, syn0m, 0);
+            }
+        }
+        if ((counter%10)==0)
+            applyGradient_(alpha,neu1.er,neu0.ac,syn0h,beta2);
+        else
+            applyGradient_(alpha,neu1.er,neu0.ac,syn0h,0);
+    }
+    else		//BPTT
+    {
+        makeBptt_(word, morph, alpha, beta, counter);
+    }
 }
 
 void RnnlmRussianMorphology::copyHiddenLayerToInput()
@@ -62,22 +68,28 @@ void RnnlmRussianMorphology::copyHiddenLayerToInput()
 
 void RnnlmRussianMorphology::saveWeights()      //saves current weights and unit activations
 {
-//    neu0b = neu0;
-//    neu1b = neu1;
-//    neu2b = neu2;
-//    syn0vb = syn0v;
-//    syn0hb = syn0h;
-//    syn1b = syn1;
+    neu0b = neu0;
+    neu1b = neu1;
+    neu2vb = neu2v;
+    neu2mb = neu2m;
+    syn0vb = syn0v;
+    syn0mb = syn0m;
+    syn0hb = syn0h;
+    syn1vb = syn1v;
+    syn1mb = syn1m;
 }
 
 void RnnlmRussianMorphology::restoreWeights()      //restores current weights and unit activations from backup copy
 {
-//    neu0 = neu0b;
-//    neu1 = neu1b;
-//    neu2 = neu2b;
-//    syn0v = syn0vb;
-//    syn0h = syn0hb;
-//    syn1 = syn1b;
+    neu0 = neu0b;
+    neu1 = neu1b;
+    neu2v = neu2vb;
+    neu2m = neu2mb;
+    syn0v = syn0vb;
+    syn0m = syn0mb;
+    syn0h = syn0hb;
+    syn1v = syn1vb;
+    syn1m = syn1mb;
 }
 
 void RnnlmRussianMorphology::saveContext()		//useful for n-best list processing
@@ -90,13 +102,14 @@ void RnnlmRussianMorphology::restoreContext()
     neu1.ac = neu1b.ac;
 }
 
-void RnnlmRussianMorphology::initNet(int i_vocabSize, const RusModelOptions& i_options)
+void RnnlmRussianMorphology::initNet(int i_vocabSize, int i_morphSize, const ModelOptions& i_options)
 {
     layer1_size = i_options.layer1_size;
     bptt = i_options.bptt;
     bptt_block = i_options.bptt_block;
     m_independent = i_options.independent;
     m_vocabSize = i_vocabSize;
+    m_morphologySize = i_morphSize;
     initNet_();
 }
 
@@ -109,7 +122,8 @@ void RnnlmRussianMorphology::initNet_()
 
     neu0b.setConstant(layer1_size, 0);
     neu1b.setConstant(layer1_size, 0);
-    neu2b.setConstant(m_vocabSize, 0);
+    neu2vb.setConstant(m_vocabSize, 0);
+    neu2mb.setConstant(m_morphologySize, 0);
 
     syn0vb.setZero(m_vocabSize, layer1_size);
     syn0mb.setZero(m_morphologySize, layer1_size);
@@ -255,16 +269,24 @@ void RnnlmRussianMorphology::computeOutputLayer_()
     neu2m.ac.softmaxActivation();
 }
 
-void RnnlmRussianMorphology::computeErrorOnOutput_(int i_trueWord)
+void RnnlmRussianMorphology::computeErrorOnOutput_(int i_trueWord, int i_trueMorph)
 {
     neu2v.fastOutputError(i_trueWord);
-    neu2m.fastOutputError(i_trueWord);
+    neu2m.fastOutputError(i_trueMorph);
 }
 
 void RnnlmRussianMorphology::computeErrorOnPrevious_(const Layer& i_nextLayer, Matrix& i_synMat, Layer& i_prevLayer)
 {
     i_prevLayer.er = i_synMat.transpose() * i_nextLayer.er;
     i_synMat.transpose();
+}
+
+void RnnlmRussianMorphology::computeErrorOnHidden_(const Layer& i_outVLayer, const Layer& i_outMLayer, Matrix& i_synVMat, Matrix& i_synMMat, Layer& i_hiddenLayer)
+{
+    i_hiddenLayer.er = i_synVMat.transpose() * i_outVLayer.er;
+    i_synVMat.transpose();
+    i_hiddenLayer.er += i_synMMat.transpose() * i_outMLayer.er;
+    i_synMMat.transpose();
 }
 
 void RnnlmRussianMorphology::applyGradient_(double i_lr, const Vector& i_next, const Vector& i_prev, Matrix& i_mat, double beta)
@@ -315,77 +337,84 @@ void RnnlmRussianMorphology::updateBptt_(int last_word, int last_morph) //shift 
     bptt_hidden[0].er = std::move(tmp_er);
 }
 
-void RnnlmRussianMorphology::makeBptt_(int word, double alpha, double beta, int counter)
+void RnnlmRussianMorphology::makeBptt_(int word, int morph, double alpha, double beta, int counter)
 {
-//    double beta2, beta3;
+    double beta2, beta3;
 
-//    beta2=beta*alpha;
-//    beta3=beta2*1;
+    beta2=beta*alpha;
+    beta3=beta2*1;
 
-//    bptt_hidden[0].ac=neu1.ac;
-//    bptt_hidden[0].er=neu1.er;
+    bptt_hidden[0].ac=neu1.ac;
+    bptt_hidden[0].er=neu1.er;
 
-//    if (!((counter%bptt_block==0) || (m_independent && (word==0))))
-//        return;
+    if (!((counter%bptt_block==0) || (m_independent && (word==0))))
+        return;
 
-//    for (int step=0; step < bptt+bptt_block-2; step++)
-//    {
-//        neu1.softmaxErrorActivation();
-//        //weight update 1->0
-//        int a = bptt_history[step];
-//        if (a!=-1)
-//        {
-//            applyGradient_(alpha,neu1.er,a,bptt_syn0v,0);
-//        }
+    for (int step=0; step < bptt+bptt_block-2; step++)
+    {
+        neu1.logisticErrorActivation();
+        //weight update 1->0
+        int w = bptt_history_v[step];
+        int m = bptt_history_m[step];
+        if (w!=-1)
+        {
+            applyGradient_(alpha, neu1.er, w, bptt_syn0v, 0);
+            applyGradient_(alpha, neu1.er, m, bptt_syn0m, 0);
+        }
 
-//        computeErrorOnPrevious_(neu1,syn0h,neu0);
-//        applyGradient_(alpha, neu1.er, neu0.ac, bptt_syn0h, 0);
+        computeErrorOnPrevious_(neu1,syn0h,neu0);
+        applyGradient_(alpha, neu1.er, neu0.ac, bptt_syn0h, 0);
 
-//        //propagate error from time T-n to T-n-1
-//        neu1.er = neu0.er + bptt_hidden[step+1].er;
+        //propagate error from time T-n to T-n-1
+        neu1.er = neu0.er + bptt_hidden[step+1].er;
 
-//        if (step<bptt+bptt_block-3)
-//        {
-//            neu1.ac = bptt_hidden[step+1].ac;
-//            neu0.ac = bptt_hidden[step+2].ac;
-//        }
-//    }
+        if (step<bptt+bptt_block-3)
+        {
+            neu1.ac = bptt_hidden[step+1].ac;
+            neu0.ac = bptt_hidden[step+2].ac;
+        }
+    }
 
-//    for (int a = 0; a< bptt + bptt_block; a++)
-//    {
-//        bptt_hidden[a].er.setZero();
-//    }
+    for (int a = 0; a< bptt + bptt_block; a++)
+    {
+        bptt_hidden[a].er.setZero();
+    }
 
-//    neu1.ac = bptt_hidden[0].ac;		//restore hidden layer after bptt
+    neu1.ac = bptt_hidden[0].ac;		//restore hidden layer after bptt
 
-//    if ((counter%10)==0)
-//    {
-//        addGradient_(bptt_syn0h,syn0h,beta2);
-//        bptt_syn0h.setZero();
-//    }
-//    else
-//    {
-//        addGradient_(bptt_syn0h,syn0h,beta2);
-//        bptt_syn0h.setZero();
-//    }
+    if ((counter%10)==0)
+    {
+        addGradient_(bptt_syn0h,syn0h,beta2);
+        bptt_syn0h.setZero();
+    }
+    else
+    {
+        addGradient_(bptt_syn0h,syn0h,beta2);
+        bptt_syn0h.setZero();
+    }
 
-//    if ((counter%10)==0)
-//    {
-//        for (int step=0; step<bptt+bptt_block-2; step++)
-//            if (bptt_history[step]!=-1)
-//            {
-//                applyGradient_(bptt_syn0v, bptt_history[step], syn0v, bptt_history[step], beta2);
-//                bptt_syn0v.setZeroColumn(bptt_history[step]);
-//            }
-//    }
-//    else
-//    {
-//        for (int step=0; step<bptt+bptt_block-2; step++) if (bptt_history[step]!=-1)
-//        {
-//            applyGradient_(bptt_syn0v, bptt_history[step], syn0v, bptt_history[step], 0);
-//            bptt_syn0v.setZeroColumn(bptt_history[step]);
-//        }
-//    }
+    if ((counter%10)==0)
+    {
+        for (int step=0; step<bptt+bptt_block-2; step++)
+            if (bptt_history_v[step]!=-1)
+            {
+                applyGradient_(bptt_syn0v, bptt_history_v[step], syn0v, bptt_history_v[step], beta2);
+                bptt_syn0v.setZeroColumn(bptt_history_v[step]);
+                applyGradient_(bptt_syn0m, bptt_history_m[step], syn0m, bptt_history_m[step], beta2);
+                bptt_syn0m.setZeroColumn(bptt_history_m[step]);
+            }
+    }
+    else
+    {
+        for (int step=0; step<bptt+bptt_block-2; step++)
+            if (bptt_history_v[step]!=-1)
+            {
+                applyGradient_(bptt_syn0v, bptt_history_v[step], syn0v, bptt_history_v[step], 0);
+                bptt_syn0v.setZeroColumn(bptt_history_v[step]);
+                applyGradient_(bptt_syn0m, bptt_history_m[step], syn0m, bptt_history_m[step], 0);
+                bptt_syn0m.setZeroColumn(bptt_history_m[step]);
+            }
+    }
 
 }
 

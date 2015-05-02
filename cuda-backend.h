@@ -35,7 +35,8 @@ public:
                             int i_rowsInMat,
                             int i_colsInMat,
                             bool i_transpose,
-                            double *o_res) const;
+                            double *o_res,
+                            bool i_override = false) const;
 
     void cudaMatrixOuterProductUpdate(double *i_leftVectorDevicePointer,
                                       double *i_rightVectorDevicePointer,
@@ -63,7 +64,7 @@ public:
     void addMatrixToMatrixAndScale(double *i_matrixDeviceMemoryPointer, int i_nRows,int i_nColumns, double i_beta, double *io_resDeviceMemoryPointer) const;
     void cudaAddColumnToColumn(double *i_matrixDeviceMemoryPointer, int i_nRows, int i_nCols, int i_updateColumn, double *io_resDeviceMemoryPointer, int i_targetColumn, double i_beta) const;
 
-    void softmaxErrorActivation(double *i_activationVector, double *io_errorVector, int i_size) const;
+    void logisticErrorActivation(double *i_activationVector, double *io_errorVector, int i_size) const;
     void copy(double *i_source, double *o_destination, int i_destinationSize) const;
     void setZeroColumn(double *iomatrixDeviceMemoryPointer, int i_nRows, int i_nCols, int i_column) const;
     void addMatrixColumnToVector(double *i_matrixDeviceMemoryPointer, int i_nRows, int i_nColumns, int i_column, double *o_vectorDeviceMemoryPointer) const;

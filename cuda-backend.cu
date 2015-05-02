@@ -141,7 +141,7 @@ __global__ void getErrorVector(double* i_activationVec, int i_vecLen, int i_targ
     }
 }
 
-__global__ void softmaxErrorActivationKernel(double *i_activationVector, double *io_errorVector, int i_size)
+__global__ void logisticErrorActivationKernel(double *i_activationVector, double *io_errorVector, int i_size)
 {
     int id = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -199,10 +199,10 @@ CudaDevice::~CudaDevice()
     checkCudaErrors(cudaFree(m_deviceBufDouble));
 }
 
-void CudaDevice::cudaVectorByMatrix(double *i_matrixDevicePointer, double *i_vectorDevicePointer, int i_rowsInMat, int i_colsInMat, bool i_transpose, double *o_res) const
+void CudaDevice::cudaVectorByMatrix(double *i_matrixDevicePointer, double *i_vectorDevicePointer, int i_rowsInMat, int i_colsInMat, bool i_transpose, double *o_res, bool i_override) const
 {
     const double alpha = 1.0;
-    const double beta = 0.0;
+    const double beta = i_override ? 0.0 : 1.0;
 
     //cublas<t>gemv computes the following expression
     //y = \alpha*A*x + \beta*y
@@ -315,10 +315,10 @@ void CudaDevice::cudaAddVectorToColumn(double *i_leftVectorDevicePointer, int i_
      checkCudaErrors(cublasDaxpy(m_cublasHandle, i_rowNumber, &alpha, i_leftVectorDevicePointer, 1,  io_matrixDeviceMemoryPointer + i_column, i_colNumber));
 }
 
-void CudaDevice::softmaxErrorActivation(double *i_activationVector, double *io_errorVector, int i_size) const
+void CudaDevice::logisticErrorActivation(double *i_activationVector, double *io_errorVector, int i_size) const
 {
     int gridSize = (int)ceil((float)i_size/m_blockSize);
-    softmaxErrorActivationKernel<<<gridSize,m_blockSize>>>(i_activationVector, io_errorVector, i_size);
+    logisticErrorActivationKernel<<<gridSize,m_blockSize>>>(i_activationVector, io_errorVector, i_size);
 }
 
 void CudaDevice::copy(double *i_source, double *o_destination, int i_destinationSize) const

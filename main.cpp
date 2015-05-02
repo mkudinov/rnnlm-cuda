@@ -403,7 +403,7 @@ int main(int argc, char **argv)
     
     srand(1);
 
-    CRnnLM trainer;
+    CRnnLM<RnnlmRussianMorphology> trainer;
 
     trainer.setLearningRate(starting_alpha);
     trainer.setGradientCutoff(gradient_cutoff);

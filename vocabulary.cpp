@@ -103,39 +103,39 @@ void Vocabulary::printIntoFile_(char* str) {
     fclose(fw);
 }
 
-int Vocabulary::initFromFile(const std::string& i_fileName)   //assumes that vocabulary is empty
-{
-    char word[MAX_STRING];
-    FILE *fin;
-    fin=fopen(i_fileName.c_str(), "rb");
-    clearHash();
-    m_size=0;
-    addWord((char *)"</s>");
+//int Vocabulary::initFromFile(const std::string& i_fileName)   //assumes that vocabulary is empty
+//{
+//    char word[MAX_STRING];
+//    FILE *fin;
+//    fin=fopen(i_fileName.c_str(), "rb");
+//    clearHash();
+//    m_size=0;
+//    addWord((char *)"</s>");
 
-    int train_size = 0;
+//    int train_size = 0;
 
-    while (1)
-    {
-        InputSequence::readWord(word, fin);
-        if (feof(fin)) break;
-        train_size++;
-        auto i = search(word);
+//    while (1)
+//    {
+//        InputSequence::readWord(word, fin);
+//        if (feof(fin)) break;
+//        train_size++;
+//        auto i = search(word);
 
-        if (i == -1)
-        {
-            auto a = addWord(word);
-            m_words[a].cn = 1;
-        }
-        else
-            m_words[i].cn++;
-    }
+//        if (i == -1)
+//        {
+//            auto a = addWord(word);
+//            m_words[a].cn = 1;
+//        }
+//        else
+//            m_words[i].cn++;
+//    }
 
-    sort();
-    printf("Vocab size: %d\n", m_size);
-    printf("Words in train file: %d\n", train_size);
-    fclose(fin);
-    return train_size;
-}
+//    sort();
+//    printf("Vocab size: %d\n", m_size);
+//    printf("Words in train file: %d\n", train_size);
+//    fclose(fin);
+//    return train_size;
+//}
 
 Vocabulary::Vocabulary(Vocabulary&& i_rhs)
 {
@@ -244,9 +244,94 @@ void InputSequence::readWord(char *word, FILE* fi)
     word[a]=0;
 }
 
+void InputPairSequence::readWord_(char *word, char *morph) const
+{
+    InputPairSequence::readWord(word, morph, m_file);
+}
+
+void InputPairSequence::readWord(char *word, char *morph, FILE* fi)
+{
+    int a=0, ch;
+    char *current = word;
+    while (!feof(fi))
+    {
+        ch=fgetc(fi);
+        if (ch==13) continue;
+        if ((ch==' ') || (ch=='\t') || (ch=='\n'))
+        {
+            if (a>0)
+            {
+                if (ch=='\n') ungetc(ch, fi);
+                break;
+            }
+
+            if (ch=='\n')
+            {
+                strcpy(word, (char *)"</s>");
+                return;
+            }
+            else continue;
+        }
+        if(ch == ':')
+        {
+            current = morph;
+            word[a]=0;
+            a = 0;
+            continue;
+        }
+
+        current[a]=ch;
+        a++;
+        if (a>=MAX_STRING) {
+            //printf("Too long word found!\n");   //truncate too long words
+            a--;
+        }
+    }
+
+    morph[a]=0;
+}
+
+std::tuple<int,int> InputPairSequence::readWordIndex_()
+{
+    char word[MAX_STRING];
+    char morph[MAX_STRING];
+    readWord_(word, morph);
+    if (feof(m_file)) return std::make_tuple(OOV_CODE, OOV_CODE);
+    m_wordsRead++;
+    int wordIndex = m_vocab->search(word);
+    int morphIndex = m_morphInventory->search(morph);
+    return std::make_tuple(wordIndex,morphIndex);
+}
+
+void InputPairSequence::goToPosition(int i_position)
+{
+    if(feof(m_file) || i_position == 0)
+    {
+        fclose(m_file);
+        m_file = fopen(m_fileName.c_str(), "rb");
+        m_wordsRead = 0;
+    }
+    if (i_position>0)
+        for (int a=0; a<i_position; a++)
+        {
+            readWordIndex_();	//this will skip words that were already learned if the training was interrupted
+            m_wordsRead++;
+        }
+}
+
+bool InputPairSequence::end() const
+{
+    return feof(m_file);
+}
+
 bool InputSequence::end() const
 {
     return feof(m_file);
+}
+
+std::tuple<int,int>  InputPairSequence::next()
+{
+    return readWordIndex_();
 }
 
 void InputSequence::goToPosition(int i_position)
@@ -268,6 +353,51 @@ void InputSequence::goToPosition(int i_position)
 int InputSequence::next()
 {
     return readWordIndex_();
+}
+
+std::tuple<int, Vocabulary, Vocabulary> InputPairSequence::initFromFile(const std::string& i_fileName)   //assumes that vocabulary is empty
+{
+    char word[MAX_STRING];
+    char morph[MAX_STRING];
+    FILE *fin;
+    fin=fopen(i_fileName.c_str(), "rb");
+    Vocabulary vocab, morphVocab;
+    vocab.clearHash();
+    morphVocab.clearHash();
+    vocab.addWord((char *)"</s>");
+    morphVocab.addWord((char *)"</s>");
+    int train_size = 0;
+
+    while (1)
+    {
+        InputPairSequence::readWord(word, morph, fin);
+        if (feof(fin)) break;
+        train_size++;
+        auto i = vocab.search(word);
+        if (i == -1)
+        {
+            auto a = vocab.addWord(word);
+            vocab.newWord(a);
+        }
+        else
+            vocab.updateWordCount(i);
+        i = morphVocab.search(morph);
+        if (i == -1)
+        {
+            auto a = morphVocab.addWord(morph);
+            morphVocab.newWord(a);
+        }
+        else
+            morphVocab.updateWordCount(i);
+    }
+
+    vocab.sort();
+    morphVocab.sort();
+    printf("Vocab size: %d\n", vocab.size());
+    printf("Morphology size: %d\n", morphVocab.size());
+    printf("Words in train file: %d\n", train_size);
+    fclose(fin);
+    return std::make_tuple(train_size, std::move(vocab), std::move(morphVocab));
 }
 
 }

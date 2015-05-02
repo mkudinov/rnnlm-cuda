@@ -8,9 +8,9 @@
 namespace RNNLM
 {
 
-struct RusModelOptions
+struct ModelOptions
 {
-    RusModelOptions(int i_layer1_size, int i_bptt, int i_bptt_block, bool i_independent = false) :
+    ModelOptions(int i_layer1_size, int i_bptt, int i_bptt_block, bool i_independent = false) :
         independent(i_independent)
       , bptt(i_bptt)
       , bptt_block(i_bptt_block)
@@ -34,11 +34,11 @@ public:
     void netFlush();
     void clearMemory();    //will erase just hidden layer state + bptt history + maxent history (called at end of sentences in the independent mode)
 
-    void computeNet(int last_word, int last_morph, int word);
-    void learnNet(int last_word, int word, double alpha, double beta, int counter);
+    void computeNet(int last_word, int last_morph, int word, int morph);
+    void learnNet(int last_word, int last_morph, int word, int morph, double alpha, double beta, int counter);
     void copyHiddenLayerToInput();
     bool independent() const {return m_independent;}
-    void initNet(int i_vocabSize, const RusModelOptions& i_options);
+    void initNet(int i_vocabSize, int i_morphSize, const ModelOptions& i_options);
     double logProb() {return double(m_logProb);}
     void resetLogProb() { m_logProb = 0;}
     void writeToFile(FILE *fo, FileTypeEnum filetype);
@@ -64,7 +64,8 @@ private:
     //backup used in training:
     Layer neu0b;
     Layer neu1b;
-    Layer neu2b;
+    Layer neu2vb;
+    Layer neu2mb;
 
     Matrix syn0vb;
     Matrix syn0hb;
@@ -84,14 +85,15 @@ private:
 
     void computeRecurrentLayer_(int i_wordIndex, int i_morphIndex);
     void computeOutputLayer_();
-    void computeErrorOnOutput_(int i_trueWord);
+    void computeErrorOnOutput_(int i_trueWord, int i_trueMorph);
     void applyGradient_(double i_lr, const Vector& i_next, const Vector& i_prev, Matrix& i_mat, double beta);
     void applyGradient_(double i_lr, const Vector& i_next, int i_column, Matrix& i_mat, double beta);
     void computeErrorOnPrevious_(const Layer& i_nextLayer, Matrix& i_synMat, Layer& i_prevLayer);
+    void computeErrorOnHidden_(const Layer& i_outVLayer, const Layer& i_outMLayer, Matrix& i_synVMat, Matrix& i_synMMat, Layer& i_hiddenLayer);
     void addGradient_(const Matrix& i_update, Matrix& o_mat , double beta2);
     void applyGradient_(const Matrix& i_update, int i_updateColumn, Matrix& io_target, int i_targetColumn, double i_beta);
     void updateBptt_(int last_word, int last_morph);
-    void makeBptt_(int word, double alpha, double beta, int counter);
+    void makeBptt_(int word, int morph, double alpha, double beta, int counter);
     void initNet_();
     void incremetLogProbByWordLP_(int word, int morph);
 

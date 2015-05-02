@@ -174,6 +174,17 @@ public:
         m_buffered.clear();
     }
 
+    void operator+=(const ProxyOp<Matrix, Vector, MUL>& i_proxyExpr)
+    {
+        CudaDevice::getDevice().cudaVectorByMatrix(i_proxyExpr.leftOperand().deviceMemoryPointer(),
+                                                   i_proxyExpr.rightOperand().deviceMemoryPointer(),
+                                                   i_proxyExpr.leftOperand().nRows(),
+                                                   i_proxyExpr.leftOperand().nCols(),
+                                                   i_proxyExpr.leftOperand().transposed(),
+                                                   m_deviceMemoryPointer, true);
+        m_buffered.clear();
+    }
+
     void operator=(const ProxyOp<Vector, Vector, SUM>& i_proxyExpr)
     {
         CudaDevice::getDevice().cudaVectorSum(i_proxyExpr.leftOperand().deviceMemoryPointer(),
@@ -264,9 +275,9 @@ public:
         CudaDevice::getDevice().cudaOutputErrorCompute(ac.deviceMemoryPointer(),m_size, i_trueWord, er.deviceMemoryPointer());
     }
 
-    void softmaxErrorActivation()
+    void logisticErrorActivation()
     {
-        CudaDevice::getDevice().softmaxErrorActivation(ac.deviceMemoryPointer(), er.deviceMemoryPointer(), m_size);
+        CudaDevice::getDevice().logisticErrorActivation(ac.deviceMemoryPointer(), er.deviceMemoryPointer(), m_size);
     }
 
     Layer() = default;
