@@ -62,6 +62,8 @@ include_directories(
 
 cuda_add_library(${TARGET_NAME} ${LIBRARY_TYPE} ${rnnlm_SOURCES} ${rnnlm_HEADERS})
 cuda_add_executable(${TARGET_NAME}-app ${rnnlm_SOURCE_DIR}/main.cpp)
+cuda_add_executable(${TARGET_NAME}-test ${rnnlm_SOURCE_DIR}/vocab_test.cpp)
 target_link_libraries(${TARGET_NAME} ${CUDA_CUBLAS_LIBRARIES})
 target_link_libraries(${TARGET_NAME}-app ${TARGET_NAME})
+target_link_libraries(${TARGET_NAME}-test ${TARGET_NAME})
 ADD_DEFINITIONS("-Wall" "-fPIC  -std=c++11 -fopenmp")

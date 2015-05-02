@@ -268,6 +268,7 @@ void InputPairSequence::readWord(char *word, char *morph, FILE* fi)
             if (ch=='\n')
             {
                 strcpy(word, (char *)"</s>");
+                strcpy(morph, (char *)"</s>");
                 return;
             }
             else continue;
