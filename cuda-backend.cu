@@ -160,7 +160,7 @@ CudaDevice::CudaDevice()
 {
     // By default, we use device 0, otherwise we override the device ID based on what is provided at the command line
     cudaError_t error;
-    m_devID = 0;
+    m_devID = 1;
 
     // get number of SMs on this GPU
     error = cudaGetDevice(&m_devID);

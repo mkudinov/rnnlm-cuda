@@ -97,14 +97,14 @@ void CRnnLM<RNNLM>::initTraining_(char *train_file, char *valid_file, char *snap
 
     m_trainWords = 0;
 
-    fi = fopen(snapshot_file, "rb");
-    if (fi!=NULL)
-    {
+//    fi = fopen(snapshot_file, "rb");
+//    if (fi!=NULL)
+//    {
 //        fclose(fi);
 //        printf("Restoring network from file to continue training...\n");
-//        restoreFromSnapshot_(snapshot_file, m_vocab, m_model);
-    }
-    else
+////        restoreFromSnapshot_(snapshot_file, m_vocab, m_model);
+//    }
+//    else
     {
         std::tie(m_trainWords,m_vocab,m_morphVocab) = InputPairSequence::initFromFile(train_file);
         m_vocabSize = m_vocab.size();
@@ -172,7 +172,7 @@ std::tuple<double, int> CRnnLM<RNNLM>::validationPhase_()
     while (1)
     {
         int word = -2, morph = -2;
-        std::tie(word,morph) = m_trainSource.next();
+        std::tie(word,morph) = m_validSource.next();
         m_model.computeNet(last_word, last_morph, word, morph);      //compute probability distribution
         if(m_validSource.end()) break;      //end of file: report LOGP, PPL
 

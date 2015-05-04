@@ -66,7 +66,7 @@ void RnnlmRussianMorphology::copyHiddenLayerToInput()
     neu0.ac = neu1.ac;
 }
 
-void RnnlmRussianMorphology::saveWeights()      //saves current weights and unit activations
+void RnnlmRussianMorphology::saveWeights()      //saves current weights and unit activations BUUUUUUUUUUUUUUUUUUGGGGGG!!!!
 {
     neu0b = neu0;
     neu1b = neu1;
@@ -130,7 +130,7 @@ void RnnlmRussianMorphology::initNet_()
     syn0hb.setZero(layer1_size,layer1_size);
 
     syn1vb.setZero(layer1_size, m_vocabSize);
-    syn1vb.setZero(layer1_size, m_morphologySize);
+    syn1mb.setZero(layer1_size, m_morphologySize);
 
     double* syn1v_init = (double *)calloc(layer1_size*(m_vocabSize+1), sizeof(double));
     double* syn1m_init = (double *)calloc(layer1_size*(m_morphologySize+1), sizeof(double));
@@ -173,6 +173,7 @@ void RnnlmRussianMorphology::initNet_()
     }
 
     syn0v.setMatrix(syn0v_init, layer1_size, m_vocabSize);
+    syn0m.setMatrix(syn0m_init, layer1_size, m_morphologySize);
     syn0h.setMatrix(syn0h_init, layer1_size, layer1_size);
     syn1v.setMatrix(syn1v_init, m_vocabSize, layer1_size);
     syn1m.setMatrix(syn1m_init, m_morphologySize, layer1_size);
@@ -196,7 +197,7 @@ void RnnlmRussianMorphology::initNet_()
         }
 
         bptt_syn0v.setZero(layer1_size, m_vocabSize);
-        bptt_syn0m.setZero(layer1_size, m_vocabSize);
+        bptt_syn0m.setZero(layer1_size, m_morphologySize);
         bptt_syn0h.setZero(layer1_size, layer1_size);
     }
 

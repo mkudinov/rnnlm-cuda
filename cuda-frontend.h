@@ -24,6 +24,7 @@ class CudaValue
 public:
     CudaValue(T i_value)
     {
+        cudaSetDevice(1);
         checkCudaErrors(cudaMalloc((void **) &m_deviceMemoryPointer, sizeof(T)));
         checkCudaErrors(cudaMemcpy(m_deviceMemoryPointer, &i_value,  sizeof(T), cudaMemcpyHostToDevice));
     }
