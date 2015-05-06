@@ -510,11 +510,6 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
                 fscanf(fi, "%lf", &d);
                 syn0v_init[a+b*m_vocabSize]=d;
             }
-            for (int a=0; a<m_vocabSize; a++)
-            {
-                fscanf(fi, "%lf", &d);
-                syn0v_init[a+b*m_vocabSize]=d;
-            }
         }
     }
     if (filetype==BINARY)
@@ -522,11 +517,6 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
         for (int b=0; b<layer1_size; b++)
         {
             for (int a=0; a < m_vocabSize; a++)
-            {
-                fread(&fl, 4, 1, fi);
-                syn0v_init[a+b*m_vocabSize]=fl;
-            }
-            for (int a=0; a<m_vocabSize; a++)
             {
                 fread(&fl, 4, 1, fi);
                 syn0v_init[a+b*m_vocabSize]=fl;
@@ -539,11 +529,6 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
         goToDelimiter(':', fi);
         for (int b=0; b<layer1_size; b++)
         {
-            for (int a=0; a<m_morphologySize; a++)
-            {
-                fscanf(fi, "%lf", &d);
-                syn0m_init[a+b*m_morphologySize]=d;
-            }
             for (int a=0; a<m_morphologySize; a++)
             {
                 fscanf(fi, "%lf", &d);
@@ -560,11 +545,6 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
                 fread(&fl, 4, 1, fi);
                 syn0m_init[a+b*m_morphologySize]=fl;
             }
-            for (int a=0; a<m_morphologySize; a++)
-            {
-                fread(&fl, 4, 1, fi);
-                syn0m_init[a+b*m_morphologySize]=fl;
-            }
         }
     }
 
@@ -578,11 +558,6 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
                 fscanf(fi, "%lf", &d);
                 syn0h_init[a+b*layer1_size]=d;
             }
-            for (int a=0; a<layer1_size; a++)
-            {
-                fscanf(fi, "%lf", &d);
-                syn0h_init[a+b*layer1_size]=d;
-            }
         }
     }
     if (filetype==BINARY)
@@ -590,11 +565,6 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
         for (int b=0; b<layer1_size; b++)
         {
             for (int a=0; a < layer1_size; a++)
-            {
-                fread(&fl, 4, 1, fi);
-                syn0h_init[a+b*layer1_size]=fl;
-            }
-            for (int a=0; a<layer1_size; a++)
             {
                 fread(&fl, 4, 1, fi);
                 syn0h_init[a+b*layer1_size]=fl;
@@ -652,10 +622,17 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
     }
 
     syn0v.setMatrix(syn0v_init, layer1_size, m_vocabSize);
-    syn0m.setMatrix(syn0v_init, layer1_size, m_morphologySize);
+    syn0m.setMatrix(syn0m_init, layer1_size, m_morphologySize);
     syn0h.setMatrix(syn0h_init, layer1_size, layer1_size);
     syn1v.setMatrix(syn1v_init, m_vocabSize, layer1_size);
-    syn1m.setMatrix(syn1v_init, m_morphologySize, layer1_size);
+    syn1m.setMatrix(syn1m_init, m_morphologySize, layer1_size);
+
+//    neu1.ac.print();
+//    syn0v.print();
+//    syn0m.print();
+//    syn0h.print();
+//    syn1v.print();
+//    syn1m.print();
 
     free(syn0v_init);
     free(syn0m_init);
@@ -668,6 +645,13 @@ void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
 
 void RnnlmRussianMorphology::writeToFile(FILE *fo, FileTypeEnum filetype)
 {
+//    neu1.ac.print();
+//    syn0v.print();
+//    syn0m.print();
+//    syn0h.print();
+//    syn1v.print();
+//    syn1m.print();
+
     float fl = 0;
     fprintf(fo, "Model\n");
     fprintf(fo, "vocabulary size: %d\n", m_vocabSize);
@@ -728,10 +712,10 @@ void RnnlmRussianMorphology::writeToFile(FILE *fo, FileTypeEnum filetype)
     ////////
     if (filetype==TEXT)
     {
-        fprintf(fo, "\nVocab.Weights 0->1:\n");
+        fprintf(fo, "\Morph.Weights 0->1:\n");
         for (int b=0; b<layer1_size; b++)
         {
-            for (int a=0; a<m_vocabSize; a++)
+            for (int a=0; a<m_morphologySize; a++)
             {
                 fprintf(fo, "%.4f\n", syn0m.getElement(b,a));
             }
@@ -741,7 +725,7 @@ void RnnlmRussianMorphology::writeToFile(FILE *fo, FileTypeEnum filetype)
     {
         for (int b=0; b<layer1_size; b++)
         {
-            for (int a=0; a<m_vocabSize; a++)
+            for (int a=0; a<m_morphologySize; a++)
             {
                 fl=syn0m.getElement(b,a);
                 fwrite(&fl, 4, 1, fo);
@@ -751,7 +735,7 @@ void RnnlmRussianMorphology::writeToFile(FILE *fo, FileTypeEnum filetype)
     ////////
     if (filetype==TEXT)
     {
-        fprintf(fo, "\nVocab.Weights 0->1:\n");
+        fprintf(fo, "\nRec.Weights 0->1:\n");
         for (int b=0; b<layer1_size; b++)
         {
             for (int a=0; a<layer1_size; a++)
@@ -798,7 +782,7 @@ void RnnlmRussianMorphology::writeToFile(FILE *fo, FileTypeEnum filetype)
     ////////
     if (filetype==TEXT)
     {
-        fprintf(fo, "\n\nWeights 1->2:\n");
+        fprintf(fo, "\n\nMorph.Weights 1->2:\n");
         for (int b=0; b<m_morphologySize; b++)
         {
             for (int a=0; a<layer1_size; a++)

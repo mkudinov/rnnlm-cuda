@@ -45,7 +45,7 @@ public:
     void trainNet(char *train_file, char *valid_file, char *snapshot_file, const ModelOptions& i_options);
 
 private:
-    void restoreFromSnapshot_(char *i_snapshot_file, Vocabulary& o_vocab, RNNLM& o_model);
+    void restoreFromSnapshot_(char *i_snapshot_file, Vocabulary& o_vocab,  Vocabulary& o_morph, RNNLM& o_model);
 
     void initTraining_(char *train_file, char *valid_file, char *snapshot_file, const ModelOptions& i_options);
     std::tuple<double, clock_t, int>  learningPhase_();
@@ -97,14 +97,14 @@ void CRnnLM<RNNLM>::initTraining_(char *train_file, char *valid_file, char *snap
 
     m_trainWords = 0;
 
-//    fi = fopen(snapshot_file, "rb");
-//    if (fi!=NULL)
-//    {
-//        fclose(fi);
-//        printf("Restoring network from file to continue training...\n");
-////        restoreFromSnapshot_(snapshot_file, m_vocab, m_model);
-//    }
-//    else
+    fi = fopen(snapshot_file, "rb");
+    if (fi!=NULL)
+    {
+        fclose(fi);
+        printf("Restoring network from file to continue training...\n");
+        restoreFromSnapshot_(snapshot_file, m_vocab, m_morphVocab, m_model);
+    }
+    else
     {
         std::tie(m_trainWords,m_vocab,m_morphVocab) = InputPairSequence::initFromFile(train_file);
         m_vocabSize = m_vocab.size();
@@ -272,6 +272,7 @@ void CRnnLM<RNNLM>::saveSnapshot_(const std::string& i_trainFileName, const std:
 
     snapshot.writeToFile(fo);
     m_vocab.writeToFile(fo);
+    m_morphVocab.writeToFile(fo);
     m_model.writeToFile(fo, filetype);
 
     fclose(fo);
@@ -279,34 +280,34 @@ void CRnnLM<RNNLM>::saveSnapshot_(const std::string& i_trainFileName, const std:
 }
 
 template<typename RNNLM>
-void CRnnLM<RNNLM>::restoreFromSnapshot_(char *i_snapshot_file, Vocabulary& o_vocab, RNNLM& o_model)    //will read whole network structure
+void CRnnLM<RNNLM>::restoreFromSnapshot_(char *i_snapshot_file, Vocabulary& o_vocab, Vocabulary& o_morphVocab, RNNLM& o_model)    //will read whole network structure
 {
-//    FILE *fi;
+    FILE *fi;
 
-//    fi=fopen(i_snapshot_file, "rb");
-//    if (fi==NULL)
-//    {
-//        printf("ERROR: model file '%s' not found!\n", i_snapshot_file);
-//        exit(1);
-//    }
+    fi=fopen(i_snapshot_file, "rb");
+    if (fi==NULL)
+    {
+        printf("ERROR: model file '%s' not found!\n", i_snapshot_file);
+        exit(1);
+    }
 
-//    Snapshot snapshot;
+    Snapshot snapshot;
 
-//    snapshot.readFromFile(fi);
+    snapshot.readFromFile(fi);
 
-//    alpha = snapshot.alpha;
-//    alpha_divide = snapshot.alpha_divide;
-//    starting_alpha = snapshot.starting_alpha;
-//    filetype = snapshot.filetype;
-//    iter = snapshot.iter;
-//    std::string train_file = snapshot.train_file;
-//    std::string valid_file = snapshot.valid_file;
-//    m_trainWords = snapshot.train_words;
+    alpha = snapshot.alpha;
+    alpha_divide = snapshot.alpha_divide;
+    starting_alpha = snapshot.starting_alpha;
+    filetype = snapshot.filetype;
+    iter = snapshot.iter;
+    m_trainWords = snapshot.train_words;
 
-//    o_vocab.readFromFile(fi);
-//    m_vocabSize = o_vocab.size();
-//    o_model.readFromFile(fi, filetype);
-//    fclose(fi);
+    o_vocab.readFromFile(fi);
+    m_vocabSize = o_vocab.size();
+    o_morphVocab.readFromFile(fi);
+    m_morphologySize = o_morphVocab.size();
+    o_model.readFromFile(fi, filetype);
+    fclose(fi);
 }
 
 }
