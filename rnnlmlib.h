@@ -74,7 +74,7 @@ private:
 };
 
 template<typename RNNLM>
-CRnnLM<RNNLM>::CRnnLM()		//constructor initializes variablesp
+CRnnLM<RNNLM>::CRnnLM()	//constructor initializes variablesp
 {
     filetype=TEXT;
     gradient_cutoff=15;
@@ -183,6 +183,7 @@ std::tuple<double, int> CRnnLM<RNNLM>::validationPhase_()
 
         m_model.copyHiddenLayerToInput();
         last_word=word;
+        last_morph=morph;
 
         if (m_model.independent() && (word==0)) m_model.clearMemory();
     }

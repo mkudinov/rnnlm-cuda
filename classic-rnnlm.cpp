@@ -256,7 +256,7 @@ void ClassicRnnlm::computeOutputLayer_()
 
 void ClassicRnnlm::computeErrorOnOutput_(int i_trueWord)
 {
-    neu2.fastOutputError(i_trueWord);
+    neu2.fastOutputError(i_trueWord, 1);
 }
 
 void ClassicRnnlm::computeErrorOnPrevious_(const Layer& i_nextLayer, Matrix& i_synMat, Layer& i_prevLayer)

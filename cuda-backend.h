@@ -25,7 +25,7 @@ public:
     void cudaOutputErrorCompute(double *i_OutputLayerActivationDevicePointer,
                                 int i_vecSize,
                                 int i_trueWordIndex,
-                                double *o_OutputLayerErrorDevicePointer) const;
+                                double *o_OutputLayerErrorDevicePointer, double tau) const;
 
     void cudaSoftmaxActivation(double *io_devicePointer,
                                int i_vectorSize) const;
@@ -36,7 +36,7 @@ public:
                             int i_colsInMat,
                             bool i_transpose,
                             double *o_res,
-                            bool i_override = false) const;
+                            bool i_override = true) const;
 
     void cudaMatrixOuterProductUpdate(double *i_leftVectorDevicePointer,
                                       double *i_rightVectorDevicePointer,
@@ -70,7 +70,7 @@ public:
     void addMatrixColumnToVector(double *i_matrixDeviceMemoryPointer, int i_nRows, int i_nColumns, int i_column, double *o_vectorDeviceMemoryPointer) const;
     void cudaLogisticActivation(double *io_vector, int i_size) const;
     void setZeroVector(double *io_deviceMemoryPointer, int m_size) const;
-    void cudaAddLog(double* i_rvalue, double *o_lvalue) const;
+    void cudaAddLog(double* i_rvalue, double i_scale, double *o_lvalue) const;
     void cudaAddScalarToScalar(double* i_rvalue, double *o_lvalue) const;
 
     static const CudaDevice& getDevice()
@@ -78,6 +78,7 @@ public:
         static CudaDevice m_device;
         return m_device;
     }
+
     ~CudaDevice();
 private:
 

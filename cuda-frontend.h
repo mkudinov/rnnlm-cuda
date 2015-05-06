@@ -12,10 +12,14 @@ class CudaProxyLog
 {
 public:
     CudaProxyLog(T *i_devicePointer):
-        m_deviceMemoryPointer(i_devicePointer) {}
+        m_deviceMemoryPointer(i_devicePointer)
+    , m_scale(1.0){}
     T *deviceMemoryPointer() const {return m_deviceMemoryPointer;}
+    T scale() const {return m_scale;}
+    CudaProxyLog operator*(const T& i_rhs){m_scale = i_rhs; return *this;}
 private:
     T *m_deviceMemoryPointer;
+    T m_scale;
 };
 
 template<typename T>
@@ -24,7 +28,7 @@ class CudaValue
 public:
     CudaValue(T i_value)
     {
-        cudaSetDevice(1);
+        //TODO: HERE YOU MUST SPECIFY GPU NUMBER!
         checkCudaErrors(cudaMalloc((void **) &m_deviceMemoryPointer, sizeof(T)));
         checkCudaErrors(cudaMemcpy(m_deviceMemoryPointer, &i_value,  sizeof(T), cudaMemcpyHostToDevice));
     }
@@ -49,7 +53,7 @@ public:
 
     CudaValue<T>& operator+=(const CudaProxyLog<T>& i_value)
     {
-        CudaDevice::getDevice().cudaAddLog(i_value.deviceMemoryPointer(), m_deviceMemoryPointer);
+        CudaDevice::getDevice().cudaAddLog(i_value.deviceMemoryPointer(), i_value.scale(), m_deviceMemoryPointer);
         return *this;
     }
 
@@ -182,7 +186,7 @@ public:
                                                    i_proxyExpr.leftOperand().nRows(),
                                                    i_proxyExpr.leftOperand().nCols(),
                                                    i_proxyExpr.leftOperand().transposed(),
-                                                   m_deviceMemoryPointer, true);
+                                                   m_deviceMemoryPointer, false);
         m_buffered.clear();
     }
 
@@ -271,9 +275,9 @@ public:
     void setConstant(size_t i_size, double i_constToFill);
     void setArray(size_t i_size, double *i_actiivationInitializer);
     int size() const {return m_size;}
-    void fastOutputError(int i_trueWord)
+    void fastOutputError(int i_trueWord, double tau)
     {
-        CudaDevice::getDevice().cudaOutputErrorCompute(ac.deviceMemoryPointer(),m_size, i_trueWord, er.deviceMemoryPointer());
+        CudaDevice::getDevice().cudaOutputErrorCompute(ac.deviceMemoryPointer(),m_size, i_trueWord, er.deviceMemoryPointer(), tau);
     }
 
     void logisticErrorActivation()

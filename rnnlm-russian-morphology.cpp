@@ -1,5 +1,7 @@
 #include "rnnlm-russian-morphology.h"
 
+const double tau = 0.5;
+
 namespace RNNLM
 {
 void RnnlmRussianMorphology::computeNet(int last_word, int last_morph, int word, int morph)
@@ -66,7 +68,7 @@ void RnnlmRussianMorphology::copyHiddenLayerToInput()
     neu0.ac = neu1.ac;
 }
 
-void RnnlmRussianMorphology::saveWeights()      //saves current weights and unit activations BUUUUUUUUUUUUUUUUUUGGGGGG!!!!
+void RnnlmRussianMorphology::saveWeights()      //saves current weights and unit activations
 {
     neu0b = neu0;
     neu1b = neu1;
@@ -132,29 +134,58 @@ void RnnlmRussianMorphology::initNet_()
     syn1vb.setZero(layer1_size, m_vocabSize);
     syn1mb.setZero(layer1_size, m_morphologySize);
 
+    double* syn0_init=(double *)calloc(layer1_size*(m_vocabSize+layer1_size), sizeof(double));
+    double* syn0v_init=(double *)calloc(layer1_size*m_vocabSize, sizeof(double));
     double* syn1v_init = (double *)calloc(layer1_size*(m_vocabSize+1), sizeof(double));
     double* syn1m_init = (double *)calloc(layer1_size*(m_morphologySize+1), sizeof(double));
-    double* syn0v_init=(double *)calloc(layer1_size*m_vocabSize, sizeof(double));
     double* syn0m_init=(double *)calloc(layer1_size*m_morphologySize, sizeof(double));
     double* syn0h_init=(double *)calloc(layer1_size*layer1_size, sizeof(double));
+
+    for (int b=0; b<layer1_size; b++) for (int a=0; a<m_vocabSize+layer1_size; a++)
+    {
+        syn0_init[a+b*(m_vocabSize+layer1_size)]=random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1); //init block intended to initialize the same matrices as in mikolov's implementation (for debug purposes)
+    }
 
     for (int b=0; b<m_vocabSize+1; b++) for (int a=0; a<layer1_size; a++)
     {
         syn1v_init[a+b*layer1_size]=random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
     }
 
-    for (int b=0; b<m_morphologySize+1; b++) for (int a=0; a<layer1_size; a++)
-    {
-        syn1m_init[a+b*layer1_size]=random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
-    }
+//    for (b=0; b<layer1_size; b++) for (a=0; a<morph_size; a++)
+//    {
+//        syn0_init[a+b*(morph_size)]=random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1); //init block intended to initialize the same matrices as in mikolov's implementation (for debug purposes)
+//    }
 
     for(int i = 0; i < layer1_size; i++)
     {
         for(int j = 0; j < m_vocabSize; j++)
         {
-            syn0v_init[i * m_vocabSize + j] = random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
+            syn0v_init[i * m_vocabSize + j] = syn0_init[j + (m_vocabSize+layer1_size) * i];
         }
     }
+
+    for(int i = 0; i < layer1_size; i++)
+    {
+        for(int j = 0; j < layer1_size; j++)
+        {
+            syn0h_init[i * layer1_size + j] = syn0_init[m_vocabSize + j + (m_vocabSize+layer1_size) * i];
+        }
+    }
+
+    free(syn0_init);
+
+    for (int b=0; b<m_morphologySize+1; b++) for (int a=0; a<layer1_size; a++)
+    {
+        syn1m_init[a+b*layer1_size]=random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
+    }
+
+//    for(int i = 0; i < layer1_size; i++)
+//    {
+//        for(int j = 0; j < m_vocabSize; j++)
+//        {
+//            syn0v_init[i * m_vocabSize + j] = random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
+//        }
+//    }
 
     for(int i = 0; i < layer1_size; i++)
     {
@@ -164,13 +195,13 @@ void RnnlmRussianMorphology::initNet_()
         }
     }
 
-    for(int i = 0; i < layer1_size; i++)
-    {
-        for(int j = 0; j < layer1_size; j++)
-        {
-            syn0h_init[i * layer1_size + j] = random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
-        }
-    }
+//    for(int i = 0; i < layer1_size; i++)
+//    {
+//        for(int j = 0; j < layer1_size; j++)
+//        {
+//            syn0h_init[i * layer1_size + j] = random(-0.1, 0.1)+random(-0.1, 0.1)+random(-0.1, 0.1);
+//        }
+//    }
 
     syn0v.setMatrix(syn0v_init, layer1_size, m_vocabSize);
     syn0m.setMatrix(syn0m_init, layer1_size, m_morphologySize);
@@ -268,12 +299,14 @@ void RnnlmRussianMorphology::computeOutputLayer_()
     neu2v.ac.softmaxActivation();
     neu2m.ac = syn1m * neu1.ac;
     neu2m.ac.softmaxActivation();
+    //neu2v.ac.print();
+   // neu2m.ac.print();
 }
 
 void RnnlmRussianMorphology::computeErrorOnOutput_(int i_trueWord, int i_trueMorph)
 {
-    neu2v.fastOutputError(i_trueWord);
-    neu2m.fastOutputError(i_trueMorph);
+    neu2v.fastOutputError(i_trueWord, 1-tau);
+    neu2m.fastOutputError(i_trueMorph, tau);
 }
 
 void RnnlmRussianMorphology::computeErrorOnPrevious_(const Layer& i_nextLayer, Matrix& i_synMat, Layer& i_prevLayer)
@@ -312,8 +345,8 @@ void RnnlmRussianMorphology::applyGradient_(const Matrix& i_update, int i_update
 
 void RnnlmRussianMorphology::incremetLogProbByWordLP_(int word, int morph)
 {
-    m_logProb += neu2v.ac.elementLog(word);
-    m_logProb += neu2m.ac.elementLog(morph);
+    m_logProb += neu2v.ac.elementLog(word)*(1-tau);
+    m_logProb += neu2m.ac.elementLog(morph)*tau;
 }
 
 void RnnlmRussianMorphology::updateBptt_(int last_word, int last_morph) //shift memory needed for bptt to next time step
@@ -360,7 +393,7 @@ void RnnlmRussianMorphology::makeBptt_(int word, int morph, double alpha, double
         if (w!=-1)
         {
             applyGradient_(alpha, neu1.er, w, bptt_syn0v, 0);
-            applyGradient_(alpha, neu1.er, m, bptt_syn0m, 0);
+            applyGradient_(alpha, neu1.er, 1, bptt_syn0m, 0);
         }
 
         computeErrorOnPrevious_(neu1,syn0h,neu0);
@@ -421,215 +454,371 @@ void RnnlmRussianMorphology::makeBptt_(int word, int morph, double alpha, double
 
 void RnnlmRussianMorphology::readFromFile(FILE *fi, FileTypeEnum filetype)
 {
-//    goToDelimiter(':', fi);
-//    fscanf(fi, "%d", &m_vocabSize);
-//    //
-//    goToDelimiter(':', fi);
-//    fscanf(fi, "%d", &layer1_size);
-//    //
-//    goToDelimiter(':', fi);
-//    fscanf(fi, "%d", &bptt);
-//    //
-//    goToDelimiter(':', fi);
-//    fscanf(fi, "%d", &bptt_block);
-//    //
-//    goToDelimiter(':', fi);
-//    fscanf(fi, "%d", &m_independent);
-//    //
-//    initNet_();
-//    //
-//    double d;
-//    float fl;
-//    if (filetype==TEXT) {
-//    goToDelimiter(':', fi);
-//    for (int a=0; a<layer1_size; a++) {
-//        fscanf(fi, "%lf", &d);
-//        neu1.ac[a]=d;
-//    }
-//    }
-//    if (filetype==BINARY) {
-//    fgetc(fi);
-//    for (int a=0; a<layer1_size; a++) {
-//        fread(&fl, 4, 1, fi);
-//        neu1.ac[a]=fl;
-//    }
-//    }
+    goToDelimiter(':', fi);
+    fscanf(fi, "%d", &m_vocabSize);
+    //
+    goToDelimiter(':', fi);
+    fscanf(fi, "%d", &m_morphologySize);
+    //
+    goToDelimiter(':', fi);
+    fscanf(fi, "%d", &layer1_size);
+    //
+    goToDelimiter(':', fi);
+    fscanf(fi, "%d", &bptt);
+    //
+    goToDelimiter(':', fi);
+    fscanf(fi, "%d", &bptt_block);
+    //
+    goToDelimiter(':', fi);
+    fscanf(fi, "%d", &m_independent);
+    //
+    initNet_();
+    //
+    double d;
+    float fl;
+    if (filetype==TEXT) {
+    goToDelimiter(':', fi);
+    for (int a=0; a<layer1_size; a++) {
+        fscanf(fi, "%lf", &d);
+        neu1.ac[a]=d;
+    }
+    }
+    if (filetype==BINARY) {
+    fgetc(fi);
+    for (int a=0; a<layer1_size; a++) {
+        fread(&fl, 4, 1, fi);
+        neu1.ac[a]=fl;
+    }
+    }
 
-//    neu1.ac.update();
+    neu1.ac.update();
 
-//    double* syn0v_init=(double *)calloc(layer1_size*m_vocabSize, sizeof(double));
-//    double* syn0h_init=(double *)calloc(layer1_size*layer1_size, sizeof(double));
-//    double* syn1_init = (double *)calloc(layer1_size*(m_vocabSize+1), sizeof(double));
+    double* syn0v_init=(double *)calloc(layer1_size*m_vocabSize, sizeof(double));
+    double* syn0h_init=(double *)calloc(layer1_size*layer1_size, sizeof(double));
+    double* syn0m_init=(double *)calloc(layer1_size*m_morphologySize, sizeof(double));
+    double* syn1v_init = (double *)calloc(layer1_size*m_vocabSize, sizeof(double));
+    double* syn1m_init = (double *)calloc(layer1_size*m_morphologySize, sizeof(double));
 
-//    //
-//    if (filetype==TEXT)
-//    {
-//        goToDelimiter(':', fi);
-//        for (int b=0; b<layer1_size; b++)
-//        {
-//            for (int a=0; a<m_vocabSize; a++)
-//            {
-//                fscanf(fi, "%lf", &d);
-//                syn0v_init[a+b*m_vocabSize]=d;
-//            }
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fscanf(fi, "%lf", &d);
-//                syn0h_init[a+b*layer1_size]=d;
-//            }
-//        }
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (int b=0; b<layer1_size; b++)
-//        {
-//            for (int a=0; a < m_vocabSize; a++)
-//            {
-//                fread(&fl, 4, 1, fi);
-//                syn0v_init[a+b*m_vocabSize]=fl;
-//            }
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fread(&fl, 4, 1, fi);
-//                syn0h_init[a+b*layer1_size]=fl;
-//            }
-//        }
-//    }
-//    //
-//    if (filetype==TEXT)
-//    {
-//        goToDelimiter(':', fi);
-//        for (int b=0; b<m_vocabSize + 1; b++)
-//        {
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fscanf(fi, "%lf", &d);
-//                syn1_init[a+b*layer1_size]=d;
-//            }
-//        }
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (int b=0; b<layer1_size + 1; b++)
-//        {
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fread(&fl, 4, 1, fi);
-//                syn1_init[a+b*layer1_size]=fl;
-//            }
-//        }
-//    }
+    //
+    if (filetype==TEXT)
+    {
+        goToDelimiter(':', fi);
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn0v_init[a+b*m_vocabSize]=d;
+            }
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn0v_init[a+b*m_vocabSize]=d;
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a < m_vocabSize; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn0v_init[a+b*m_vocabSize]=fl;
+            }
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn0v_init[a+b*m_vocabSize]=fl;
+            }
+        }
+    }
 
-//    syn0v.setMatrix(syn0v_init, layer1_size, m_vocabSize);
-//    syn0h.setMatrix(syn0h_init, layer1_size, layer1_size);
-//    syn1.setMatrix(syn1_init, m_vocabSize, layer1_size);
+    if (filetype==TEXT)
+    {
+        goToDelimiter(':', fi);
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_morphologySize; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn0m_init[a+b*m_morphologySize]=d;
+            }
+            for (int a=0; a<m_morphologySize; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn0m_init[a+b*m_morphologySize]=d;
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a < m_morphologySize; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn0m_init[a+b*m_morphologySize]=fl;
+            }
+            for (int a=0; a<m_morphologySize; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn0m_init[a+b*m_morphologySize]=fl;
+            }
+        }
+    }
 
-//    free(syn0v_init);
-//    free(syn0h_init);
-//    free(syn1_init);
+    if (filetype==TEXT)
+    {
+        goToDelimiter(':', fi);
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn0h_init[a+b*layer1_size]=d;
+            }
+            for (int a=0; a<layer1_size; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn0h_init[a+b*layer1_size]=d;
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a < layer1_size; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn0h_init[a+b*layer1_size]=fl;
+            }
+            for (int a=0; a<layer1_size; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn0h_init[a+b*layer1_size]=fl;
+            }
+        }
+    }
 
-//    saveWeights();
+    //
+    if (filetype==TEXT)
+    {
+        goToDelimiter(':', fi);
+        for (int b=0; b<m_vocabSize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn1v_init[a+b*layer1_size]=d;
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<m_vocabSize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn1v_init[a+b*layer1_size]=fl;
+            }
+        }
+    }
+    //
+    if (filetype==TEXT)
+    {
+        goToDelimiter(':', fi);
+        for (int b=0; b<m_morphologySize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fscanf(fi, "%lf", &d);
+                syn1m_init[a+b*layer1_size]=d;
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<m_morphologySize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fread(&fl, 4, 1, fi);
+                syn1m_init[a+b*layer1_size]=fl;
+            }
+        }
+    }
+
+    syn0v.setMatrix(syn0v_init, layer1_size, m_vocabSize);
+    syn0m.setMatrix(syn0v_init, layer1_size, m_morphologySize);
+    syn0h.setMatrix(syn0h_init, layer1_size, layer1_size);
+    syn1v.setMatrix(syn1v_init, m_vocabSize, layer1_size);
+    syn1m.setMatrix(syn1v_init, m_morphologySize, layer1_size);
+
+    free(syn0v_init);
+    free(syn0m_init);
+    free(syn0h_init);
+    free(syn1v_init);
+    free(syn1m_init);
+
+    saveWeights();
 }
 
 void RnnlmRussianMorphology::writeToFile(FILE *fo, FileTypeEnum filetype)
 {
-//    float fl = 0;
-//    fprintf(fo, "Model\n");
-//    fprintf(fo, "vocabulary size: %d\n", m_vocabSize);
-//    fprintf(fo, "hidden layer size: %d\n", layer1_size);
+    float fl = 0;
+    fprintf(fo, "Model\n");
+    fprintf(fo, "vocabulary size: %d\n", m_vocabSize);
+    fprintf(fo, "morphology size: %d\n", m_morphologySize);
+    fprintf(fo, "hidden layer size: %d\n", layer1_size);
 
-//    fprintf(fo, "bptt: %d\n", bptt);
-//    fprintf(fo, "bptt block: %d\n", bptt_block);
-//    fprintf(fo, "independent sentences mode: %d\n", m_independent);
-//    neu1.ac.prepareToSave();
-//    if (filetype==TEXT)
-//    {
-//        fprintf(fo, "\nHidden layer activation:\n");
-//        for (int a=0; a<layer1_size; a++) fprintf(fo, "%.4f\n", neu1.ac[a]);
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (int a=0; a<layer1_size; a++)
-//        {
-//            fl=neu1.ac[a];
-//            fwrite(&fl, 4, 1, fo);
-//        }
-//    }
-//    //////////
-//    syn0v.prepareToSave();
-//    syn0h.prepareToSave();
-//    syn1.prepareToSave();
+    fprintf(fo, "bptt: %d\n", bptt);
+    fprintf(fo, "bptt block: %d\n", bptt_block);
+    fprintf(fo, "independent sentences mode: %d\n", m_independent);
+    neu1.ac.prepareToSave();
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\nHidden layer activation:\n");
+        for (int a=0; a<layer1_size; a++) fprintf(fo, "%.4f\n", neu1.ac[a]);
+    }
+    if (filetype==BINARY)
+    {
+        for (int a=0; a<layer1_size; a++)
+        {
+            fl=neu1.ac[a];
+            fwrite(&fl, 4, 1, fo);
+        }
+    }
+    //////////
+    syn0v.prepareToSave();
+    syn0m.prepareToSave();
+    syn0h.prepareToSave();
+    syn1v.prepareToSave();
+    syn1m.prepareToSave();
 
-////    syn0v.print();
-////    syn0h.print();
-////    syn1.print();
-////    neu1.ac.print();
+//    syn0v.print();
+//    syn0h.print();
+//    syn1.print();
+//    neu1.ac.print();
 
-//    if (filetype==TEXT)
-//    {
-//        fprintf(fo, "\nWeights 0->1:\n");
-//        for (int b=0; b<layer1_size; b++)
-//        {
-//            for (int a=0; a<m_vocabSize; a++)
-//            {
-//                fprintf(fo, "%.4f\n", syn0v.getElement(b,a));
-//            }
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fprintf(fo, "%.4f\n", syn0h.getElement(b,a));
-//            }
-//        }
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (int b=0; b<layer1_size; b++)
-//        {
-//            for (int a=0; a<m_vocabSize; a++)
-//            {
-//                fl=syn0v.getElement(b,a);
-//                fwrite(&fl, 4, 1, fo);
-//            }
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fl=syn0h.getElement(b,a);
-//                fwrite(&fl, 4, 1, fo);
-//            }
-//        }
-//    }
-//    /////////
-//    if (filetype==TEXT)
-//    {
-//        fprintf(fo, "\n\nWeights 1->2:\n");
-//        for (int b=0; b<m_vocabSize; b++)
-//        {
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fprintf(fo, "%.4f\n", syn1.getElement(b,a));
-//            }
-//        }
-//        for (int a=0; a<layer1_size; a++)
-//        {
-//            fprintf(fo, "%.4f\n", 1.0); //we removed classes so for compatibility with the original tool we leave here class weights
-//        }
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\nVocab.Weights 0->1:\n");
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fprintf(fo, "%.4f\n", syn0v.getElement(b,a));
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fl=syn0v.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+        }
+    }
+    ////////
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\nVocab.Weights 0->1:\n");
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fprintf(fo, "%.4f\n", syn0m.getElement(b,a));
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<m_vocabSize; a++)
+            {
+                fl=syn0m.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+        }
+    }
+    ////////
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\nVocab.Weights 0->1:\n");
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fprintf(fo, "%.4f\n", syn0h.getElement(b,a));
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<layer1_size; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fl=syn0h.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+        }
+    }
+    /////////
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\n\nVocab.Weights 1->2:\n");
+        for (int b=0; b<m_vocabSize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fprintf(fo, "%.4f\n", syn1v.getElement(b,a));
+            }
+        }
 
-//    }
-//    if (filetype==BINARY)
-//    {
-//        for (int b=0; b<m_vocabSize; b++)
-//        {
-//            for (int a=0; a<layer1_size; a++)
-//            {
-//                fl=syn1.getElement(b,a);
-//                fwrite(&fl, 4, 1, fo);
-//            }
-//        }
-//        for (int a=0; a<layer1_size; a++)
-//        {
-//            fl=1.0;
-//            fwrite(&fl, 4, 1, fo); //same here
-//        }
-//    }
-//    ////////
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<m_vocabSize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fl=syn1v.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+        }
+    }
+    ////////
+    if (filetype==TEXT)
+    {
+        fprintf(fo, "\n\nWeights 1->2:\n");
+        for (int b=0; b<m_morphologySize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fprintf(fo, "%.4f\n", syn1m.getElement(b,a));
+            }
+        }
+    }
+    if (filetype==BINARY)
+    {
+        for (int b=0; b<m_morphologySize; b++)
+        {
+            for (int a=0; a<layer1_size; a++)
+            {
+                fl=syn1m.getElement(b,a);
+                fwrite(&fl, 4, 1, fo);
+            }
+        }
+    }
+    /////////
 }
 
 }

@@ -49,6 +49,7 @@ int main(int argc, char **argv)
     int rand_seed=1;
     int nbest=0;
     int one_iter=0;
+    int gpu = 0;
     
     char train_file[MAX_STRING];
     char valid_file[MAX_STRING];
@@ -300,6 +301,21 @@ int main(int argc, char **argv)
         printf("Min improvement: %f\n", min_improvement);
     }
 
+    //set gpu device
+    i=argPos((char *)"-gpu", argc, argv);
+    if (i>0) {
+        if (i+1==argc) {
+            printf("ERROR: gpu id not specified!\n");
+            return 0;
+        }
+
+        gpu=atof(argv[i+1]);
+
+        if (debug_mode>0)
+        printf("Device : %f\n", gpu);
+    }
+
+
     //set hidden layer size
     i=argPos((char *)"-hidden", argc, argv);
     if (i>0) {
@@ -329,7 +345,7 @@ int main(int argc, char **argv)
         if (debug_mode>0)
         printf("BPTT: %d\n", bptt-1);
     }
-    
+
     
     //set bptt block
     i=argPos((char *)"-bptt-block", argc, argv);
@@ -402,6 +418,8 @@ int main(int argc, char **argv)
     
     
     srand(1);
+
+    cudaSetDevice(gpu);
 
     CRnnLM<RnnlmRussianMorphology> trainer;
 

@@ -128,16 +128,16 @@ __global__ void logisticActivation(double *io_vec, int num)
     io_vec[id] = 1/(1+exp(-io_vec[id]));
 }
 
-__global__ void getErrorVector(double* i_activationVec, int i_vecLen, int i_targetWord, double *o_errorVec)
+__global__ void getErrorVector(double* i_activationVec, int i_vecLen, int i_targetWord, double *o_errorVec, double tau)
 {
     int id = blockIdx.x*blockDim.x+threadIdx.x;
     if(id == i_targetWord)
     {
-        o_errorVec[id] = 1 - i_activationVec[id];
+        o_errorVec[id] = tau*(1 - i_activationVec[id]);
     }
     else if(id < i_vecLen)
     {
-        o_errorVec[id] = -i_activationVec[id];
+        o_errorVec[id] = -i_activationVec[id] * tau;
     }
 }
 
@@ -151,9 +151,9 @@ __global__ void logisticErrorActivationKernel(double *i_activationVector, double
     }
 }
 
-__global__ void addLog(double *i_rvalue, double *o_lvalue)
+__global__ void addLog(double *i_rvalue, double i_scale, double *o_lvalue)
 {
-    *o_lvalue += log10(*i_rvalue);
+    *o_lvalue += log10(*i_rvalue)*i_scale;
 }
 
 CudaDevice::CudaDevice()
@@ -229,10 +229,10 @@ double CudaDevice::cudaGetVectorCoordinate(double *i_vectorDevicePointer, int i_
     return *m_hostBuf;
 }
 
-void CudaDevice::cudaOutputErrorCompute(double *i_OutputLayerActivationDevicePointer, int i_vecSize, int i_trueWordIndex, double *o_OutputLayerErrorDevicePointer) const
+void CudaDevice::cudaOutputErrorCompute(double *i_OutputLayerActivationDevicePointer, int i_vecSize, int i_trueWordIndex, double *o_OutputLayerErrorDevicePointer, double tau) const
 {
     int gridSize = (int)ceil((float)i_vecSize/m_blockSize);
-    getErrorVector<<<gridSize, m_blockSize>>>(i_OutputLayerActivationDevicePointer, i_vecSize, i_trueWordIndex, o_OutputLayerErrorDevicePointer);
+    getErrorVector<<<gridSize, m_blockSize>>>(i_OutputLayerActivationDevicePointer, i_vecSize, i_trueWordIndex, o_OutputLayerErrorDevicePointer, tau);
 }
 
 void CudaDevice::cudaMatrixOuterProductUpdate(double *i_leftVectorDevicePointer,
@@ -379,9 +379,9 @@ void CudaDevice::setZeroVector(double *io_deviceMemoryPointer, int m_size) const
     checkCudaErrors(cublasDscal(m_cublasHandle, m_size, &alpha, io_deviceMemoryPointer, 1 ));
 }
 
-void CudaDevice::cudaAddLog(double* i_rvalue, double *o_lvalue) const
+void CudaDevice::cudaAddLog(double* i_rvalue, double i_scale, double *o_lvalue) const
 {
-    addLog<<<1,1>>>(i_rvalue, o_lvalue);
+    addLog<<<1,1>>>(i_rvalue, i_scale, o_lvalue);
 }
 
 void CudaDevice::cudaAddScalarToScalar(double* i_rvalue, double *o_lvalue) const
