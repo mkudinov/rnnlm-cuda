@@ -1,7 +1,5 @@
 #include "rnnlm-russian-morphology.h"
 
-const double tau = 0.5;
-
 namespace RNNLM
 {
 void RnnlmRussianMorphology::computeNet(int last_word, int last_morph, int word, int morph)
@@ -284,7 +282,7 @@ void RnnlmRussianMorphology::computeRecurrentLayer_(int i_word, int i_morph)
     {
         neu1.ac = syn0h * neu0.ac;
         neu1.ac.addMatrixColumn(syn0v, i_word);
-        neu1.ac.addMatrixColumn(syn0m, i_morph);
+    //    neu1.ac.addMatrixColumn(syn0m, i_morph);
     }
     else
     {
@@ -297,16 +295,17 @@ void RnnlmRussianMorphology::computeOutputLayer_()
 {
     neu2v.ac = syn1v * neu1.ac;
     neu2v.ac.softmaxActivation();
-    neu2m.ac = syn1m * neu1.ac;
-    neu2m.ac.softmaxActivation();
+//    neu2m.ac = syn1m * neu1.ac;
+//    neu2m.ac.softmaxActivation();
+
     //neu2v.ac.print();
    // neu2m.ac.print();
 }
 
 void RnnlmRussianMorphology::computeErrorOnOutput_(int i_trueWord, int i_trueMorph)
 {
-    neu2v.fastOutputError(i_trueWord, 1-tau);
-    neu2m.fastOutputError(i_trueMorph, tau);
+    neu2v.fastOutputError(i_trueWord, 1);
+    neu2m.fastOutputError(i_trueMorph, 1);
 }
 
 void RnnlmRussianMorphology::computeErrorOnPrevious_(const Layer& i_nextLayer, Matrix& i_synMat, Layer& i_prevLayer)
@@ -319,8 +318,8 @@ void RnnlmRussianMorphology::computeErrorOnHidden_(const Layer& i_outVLayer, con
 {
     i_hiddenLayer.er = i_synVMat.transpose() * i_outVLayer.er;
     i_synVMat.transpose();
-    i_hiddenLayer.er += i_synMMat.transpose() * i_outMLayer.er;
-    i_synMMat.transpose();
+//    i_hiddenLayer.er += i_synMMat.transpose() * i_outMLayer.er;
+//    i_synMMat.transpose();
 }
 
 void RnnlmRussianMorphology::applyGradient_(double i_lr, const Vector& i_next, const Vector& i_prev, Matrix& i_mat, double beta)
@@ -345,8 +344,10 @@ void RnnlmRussianMorphology::applyGradient_(const Matrix& i_update, int i_update
 
 void RnnlmRussianMorphology::incremetLogProbByWordLP_(int word, int morph)
 {
-    m_logProb += neu2v.ac.elementLog(word)*(1-tau);
-    m_logProb += neu2m.ac.elementLog(morph)*tau;
+    m_lemLogProb += neu2v.ac.elementLog(word);
+    m_morphLogProb += neu2m.ac.elementLog(morph);
+//    m_logProb += neu2v.ac.elementLog(word)*(1-tau);
+//    m_logProb += neu2m.ac.elementLog(morph)*tau;
 }
 
 void RnnlmRussianMorphology::updateBptt_(int last_word, int last_morph) //shift memory needed for bptt to next time step

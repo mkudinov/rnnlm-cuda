@@ -43,6 +43,7 @@ public:
     void setRandSeed(int newSeed) {srand(newSeed);}
     void setDebugMode(int newDebug) {debug_mode=newDebug;}
     void trainNet(char *train_file, char *valid_file, char *snapshot_file, const ModelOptions& i_options);
+    void testNet(char *test_file, char *snapshot_file, bool i_sentenceWise);
 
 private:
     void restoreFromSnapshot_(char *i_snapshot_file, Vocabulary& o_vocab,  Vocabulary& o_morph, RNNLM& o_model);
@@ -191,6 +192,9 @@ std::tuple<double, int> CRnnLM<RNNLM>::validationPhase_()
     std::tuple<double, int> validResult;
     std::get<0>(validResult) = m_model.logProb();
     std::get<1>(validResult) = wordcn;
+    double lemLP, morphLP;
+    std::tie(lemLP, morphLP) = m_model.detailedLP();
+    std::cout << "Lemm.score=" << lemLP / log10(2)/wordcn << " Morph.score=" << morphLP / log10(2)/wordcn << " Words: " << wordcn << std::endl;
     m_model.resetLogProb();
     return validResult;
 }
@@ -244,6 +248,92 @@ void CRnnLM<RNNLM>::trainNet(char *train_file, char *valid_file, char *snapshot_
         saveSnapshot_(train_file, valid_file, snapshot_file);
         iter++;
     }
+}
+
+template<typename RNNLM>
+void CRnnLM<RNNLM>::testNet(char *test_file, char *snapshot_file, bool i_sentenceWise)
+{
+    printf("Starting testing using file %s\n", test_file);
+    starting_alpha=alpha;
+
+    FILE *fi;
+
+    m_trainWords = 0;
+
+    fi = fopen(snapshot_file, "rb");
+    if (fi!=NULL)
+    {
+        fclose(fi);
+        printf("Reading network from file...\n");
+        restoreFromSnapshot_(snapshot_file, m_vocab, m_morphVocab, m_model);
+    }
+    else
+    {
+        std::cout << "No such model file " << snapshot_file << std::endl;
+        exit(1);
+    }
+
+    InputPairSequence testSource;
+    testSource = InputPairSequence(test_file, &m_vocab, &m_morphVocab);
+
+    m_model.netFlush();
+    int wordcn=0;
+    int last_word = 0, last_morph = 0;
+
+    double lemLP = 0;
+    double morphLP = 0;
+
+    testSource.goToPosition(0);
+    while (1)
+    {
+        int word = -2, morph = -2;
+        std::tie(word,morph) = testSource.next();
+        m_model.computeNet(last_word, last_morph, word, morph);      //compute probability distribution
+        if(testSource.end()) break;      //end of file: report LOGP, PPL
+
+        if (word!=-1)
+        {
+            wordcn++;
+        }
+
+        m_model.copyHiddenLayerToInput();
+        last_word=word;
+        last_morph=morph;
+
+        if(word == 0)
+        {
+            if(i_sentenceWise)
+            {
+                if(wordcn == 0)
+                {
+                    std::cout << std::endl;
+                }
+                else
+                {
+                    double mlp, wlp;
+                    std::tie(wlp, mlp) = m_model.detailedLP();
+                    std::cout << "Lemm.score=" << wlp / log10(2) << " Morph.score=" << mlp/log10(2) << " Words: " << wordcn << std::endl;
+
+                }
+                m_model.clearMemory();
+                m_model.resetLogProb();
+                wordcn = 0;
+            }
+            else
+            {
+                std::cout << wordcn << " words processed" << std::endl;
+            }
+        }      
+
+        if (m_model.independent() && (word==0)) m_model.clearMemory();
+    }
+
+    if(!i_sentenceWise)
+    {
+        std::tie(lemLP, morphLP) = m_model.detailedLP();
+        std::cout << "Lemm.score=" << lemLP / log10(2) / wordcn << " Morph.score=" << morphLP / log10(2) / wordcn << " Words: " << wordcn << std::endl;
+    }
+    m_model.resetLogProb();
 }
 
 template<typename RNNLM>

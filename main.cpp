@@ -50,9 +50,11 @@ int main(int argc, char **argv)
     int nbest=0;
     int one_iter=0;
     int gpu = 0;
-    
+    int test = 0;
+
     char train_file[MAX_STRING];
     char valid_file[MAX_STRING];
+    char test_file[MAX_STRING];
     char rnnlm_file[MAX_STRING];
     
     FILE *f;
@@ -193,7 +195,28 @@ int main(int argc, char **argv)
     	}
     }
     
-    
+    //search for test file
+    i=argPos((char *)"-test", argc, argv);
+    if (i>0) {
+        if (i+1==argc) {
+            printf("ERROR: validation data file not specified!\n");
+            return 0;
+        }
+
+        strcpy(test_file, argv[i+1]);
+
+        if (debug_mode>0)
+        printf("test file: %s\n", test_file);
+
+        f=fopen(test_file, "rb");
+        if (f==NULL) {
+            printf("ERROR: test data file not found!\n");
+            return 0;
+        }
+
+        test=1;
+    }
+
     //set nbest rescoring mode
     i=argPos((char *)"-nbest", argc, argv);
     if (i>0) {
@@ -384,7 +407,7 @@ int main(int argc, char **argv)
         printf("Model will be saved in binary format\n");
 
         fileformat=BINARY;
-    }  
+    }
     
     //search for rnnlm file
     i=argPos((char *)"-rnnlm", argc, argv);
@@ -411,7 +434,7 @@ int main(int argc, char **argv)
     	printf("ERROR: rnnlm file must be specified for testing!\n");
     	return 0;
     }
-    if (!test_data_set && !train_mode && gen==0) {
+    if (!test_data_set && !test && !train_mode && gen==0) {
     	printf("ERROR: training or testing must be specified!\n");
     	return 0;
     }
@@ -434,7 +457,12 @@ int main(int argc, char **argv)
 
     ModelOptions options(hidden_size, bptt, bptt_block);
 
+    if(test == 0)
     trainer.trainNet(train_file, valid_file, rnnlm_file, options);
+    else
+    {
+        trainer.testNet(test_file,rnnlm_file,false);
+    }
     
     return 0;
 }

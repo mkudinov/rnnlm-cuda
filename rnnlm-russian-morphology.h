@@ -8,6 +8,8 @@
 namespace RNNLM
 {
 
+const double tau = 0.0;
+
 struct ModelOptions
 {
     ModelOptions(int i_layer1_size, int i_bptt, int i_bptt_block, bool i_independent = false) :
@@ -26,7 +28,7 @@ struct ModelOptions
 class RnnlmRussianMorphology
 {
 public:
-    RnnlmRussianMorphology() : m_logProb(double(0)) {}
+    RnnlmRussianMorphology() : m_lemLogProb(double(0)),  m_morphLogProb(double(0)){}
     void saveNet();
     void saveWeights();			//saves current weights and unit activations
     void restoreWeights();
@@ -39,12 +41,14 @@ public:
     void copyHiddenLayerToInput();
     bool independent() const {return m_independent;}
     void initNet(int i_vocabSize, int i_morphSize, const ModelOptions& i_options);
-    double logProb() {return double(m_logProb);}
-    void resetLogProb() { m_logProb = 0;}
+    double logProb() {return double(m_lemLogProb); /*+ double(m_morphLogProb);*/}
+    std::tuple<double, double> detailedLP() {return std::make_tuple(double(m_lemLogProb), double(m_morphLogProb));}
+    void resetLogProb() { m_lemLogProb = 0; m_morphLogProb = 0;}
     void writeToFile(FILE *fo, FileTypeEnum filetype);
 
 private:
-    CudaValue<double> m_logProb;
+    CudaValue<double> m_lemLogProb;
+    CudaValue<double> m_morphLogProb;
 
     int m_vocabSize;
     int m_morphologySize;
